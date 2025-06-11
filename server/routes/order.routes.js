@@ -1,0 +1,17 @@
+// routes/order.routes.js
+import express from 'express';
+import {
+  createOrder,
+  getAllOrders,
+  getOrderById,
+  updateOrder
+} from '../controllers/order.controller.js';
+
+const router = express.Router();
+
+router.get('/', getAllOrders);
+router.post('/', createOrder);
+router.get('/:id', getOrderById);
+router.put('/:id', updateOrder);
+
+export default router;

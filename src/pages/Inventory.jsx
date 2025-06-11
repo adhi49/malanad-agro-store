@@ -1,10 +1,9 @@
-// InventoryForm.jsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@mui/material';
 import InventoryModal from '../components/inventory/InventoryModal';
-import { AddInventory, deleteInventory, getInventory, getInventoryById, updateInventory } from '../Api/InventoryApi';
+import { addInventory, deleteInventory, getInventory, getInventoryById, updateInventory } from '../api/inventory';
 import InventoryList from '../components/inventory/InventoryList';
-import OrderPage from './OrderPage';
+
 const initialState = {
     inventoryName: '',
     category: '',
@@ -27,6 +26,7 @@ const Inventory = () => {
     useEffect(() => {
         fetchInventoryList()
     }, [])
+
     const toggleModal = () => {
         setModalOpen(prevState => !prevState)
     }
@@ -48,7 +48,7 @@ const Inventory = () => {
             if (formData.id != null) {
                 response = await updateInventory(formData.id, userPayload)
             } else {
-                response = await AddInventory(userPayload);
+                response = await addInventory(userPayload);
             }
             alert(response.message);
             toggleModal();

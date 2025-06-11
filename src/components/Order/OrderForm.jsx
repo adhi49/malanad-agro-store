@@ -1,7 +1,7 @@
 import { Button } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { getInventory } from '../../Api/InventoryApi';
-import { AddOrders, updateOrder } from '../../Api/OrderApi';
+import { addOrder, updateOrder } from '../../Api/OrderApi';
 import OrderField from './OrderField';
 import axios from 'axios';
 
@@ -26,6 +26,7 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
     const [selectedOrder, setSelectOrder] = useState(OrderState);
     const [orderStatusDisabled, setOrderStatusDisabled] = useState(true);
     const [invQty, setINQty] = useState(0)
+
     const fetchUsedQtyForInventory = async (invId) => {
         const res = await axios.get(`/api/get-used-inventory-quantity/${inventoryId}`)
         const qtyList = res.data;
@@ -134,7 +135,7 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
                 await updateOrder(id, payload);
                 alert("Order updated successfully!");
             } else {
-                await AddOrders(payload);
+                await addOrder(payload);
                 alert("Order placed successfully!");
             }
             setSelectOrder(OrderState);

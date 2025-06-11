@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import OrderList from '../components/Order/OrderList';
 import OrderForm from '../components/Order/OrderForm';
-import { getAllOrders, getOrderById } from '../Api/OrderApi';
+import { getAllOrders, getOrderById } from '../api/order';
 
 const OrderPage = () => {
     const [Orderlist, setOrders] = useState([]);
@@ -14,8 +14,6 @@ const OrderPage = () => {
         const result = await getAllOrders();
         setOrders(result?.data || []);
     };
-
-
 
     const handleEdit = async (id) => {
         const response = await getOrderById(id);
