@@ -11,6 +11,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -24,6 +26,7 @@ app.get("/", (req, res) => {
 app.use("/api/dashboard/inventory", inventoryRoutes);
 app.use("/api/dashboard/orders", orderRoutes);
 
+
 // Error handling middleware (optional but recommended)
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
@@ -32,5 +35,5 @@ app.use((err, req, res, next) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Malanad Server running at http://localhost:${PORT}`);
 });

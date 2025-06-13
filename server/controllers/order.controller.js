@@ -115,6 +115,7 @@ export const getAllOrders = async (req, res) => {
             error: err.message,
         });
     }
+
 }
 
 export const getOrderById = async (req, res) => {
@@ -190,3 +191,28 @@ export const updateOrder = async (req, res) => {
         });
     }
 }
+
+export const getUsedQuantity = async (req, res) => {
+    const { inventoryId, availableQuantity } = req.params;
+    console.log("Requested Inventory ID:", inventoryId, availableQuantity);
+
+
+    try {
+        const usedResult = await pool.query(
+            `SELECT SUM(quantity) as total_used FROM used_inventory_quantity WHERE inventory_id = $1`,
+            [inventoryId]
+        );
+
+        const totalUsedQuantity = usedResult.rows[0]?.total_used || 0;
+        const finalAvailable = availableQuantity - totalUsedQuantity;
+
+        res.status(200).json({
+            used: Number(totalUsedQuantity),
+            availableQuantity: finalAvailable,
+            message: "Fetched successfully"
+        });
+    } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};

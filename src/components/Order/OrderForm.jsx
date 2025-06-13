@@ -1,9 +1,9 @@
 import { Button } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { getInventory } from '../../Api/InventoryApi';
-import { addOrder, updateOrder } from '../../Api/OrderApi';
 import OrderField from './OrderField';
 import axios from 'axios';
+import { getInventory } from '../../api/inventory';
+import { addOrder, fetchUsedQtyForInventory, updateOrder } from '../../api/order';
 
 const OrderState = {
     Item: '',
@@ -25,12 +25,8 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
     const [dataList, setDataList] = useState([]);
     const [selectedOrder, setSelectOrder] = useState(OrderState);
     const [orderStatusDisabled, setOrderStatusDisabled] = useState(true);
-    const [invQty, setINQty] = useState(0)
+    const [remainingQuantity, setRemainingQuantity] = useState(0)
 
-    const fetchUsedQtyForInventory = async (invId) => {
-        const res = await axios.get(`/api/get-used-inventory-quantity/${inventoryId}`)
-        const qtyList = res.data;
-    }
 
     useEffect(() => {
         const fetchInventory = async () => {
@@ -39,6 +35,7 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
         };
         fetchInventory();
     }, []);
+
 
     useEffect(() => {
         if (isEdit && editOrder) {
@@ -56,24 +53,38 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
                 orderstatus: editOrder.orderstatus || 'ORDER_PENDING',
                 customerphone: editOrder.customerphone || '',
                 unit: editOrder.unit || '',
-                availableQuantity: editOrder.remainingQuantity
+                availableQuantity: editOrder.availableQuantity
             });
         }
     }, [isEdit, editOrder]);
 
+    const fetchUsedInventory = async (item) => {
+        try {
+            await fetchUsedQtyForInventory(item.id, item.remainingQuantity);
+
+            setSelectOrder(prev => ({
+                ...prev,
+                remainingQuantity
+            }));
+        } catch (err) {
+            console.error("Error fetching used quantity:", err);
+        }
+    };
+
     const handleSelect = (e) => {
         const { name, value } = e.target;
-
+        console.log("e.target", e.target)
         if (name === 'Item') {
-            const selectedItem = dataList.find(item => item.inventoryName === value);
+            const selectedItem = dataList.find(item => item.id === value);
             setSelectOrder(prev => ({
                 ...prev,
                 Item: selectedItem.inventoryName,
                 inventoryId: selectedItem.id,
                 price: selectedItem.price,
                 unit: selectedItem.unit,
-                availableQuantity: selectedItem.availableQuantity
+
             }));
+            fetchUsedInventory(selectedItem);
         } else if (name === 'paymentstatus') {
             let orderstatus = 'ORDER_INPROGRESS';
             setOrderStatusDisabled(false);
@@ -115,7 +126,6 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
         }
 
 
-
         const payload = {
             inventoryid: inventoryId,
             inventoryname: Item,
@@ -149,7 +159,7 @@ const OrderForm = ({ onOrderPlaced, editOrder, orders }) => {
 
     return (
         <>
-            <OrderField selectedOrder={selectedOrder} handleSelect={handleSelect} isEdit={isEdit} dataList={dataList} orderStatusDisabled={orderStatusDisabled} />
+            <OrderField selectedOrder={selectedOrder} handleSelect={handleSelect} isEdit={isEdit} dataList={dataList} orderStatusDisabled={orderStatusDisabled} fetchUsedInventory={fetchUsedInventory} />
 
             <Button
                 sx={{ width: 250, marginLeft: 2, marginBottom: 2, padding: 1, marginTop: 2 }}

@@ -29,3 +29,13 @@ export const updateOrder = async (id, data) => {
         console.error('Update error:', error.response?.data || error.message);
     }
 };
+export const fetchUsedQtyForInventory = async (inventoryId, availableQuantity) => {
+    console.log("Calling /dashboard/orders/used-quantity with ID:", inventoryId, availableQuantity);
+    try {
+        const response = await axiosInstance.get(`/dashboard/orders/used-quantity/${inventoryId}/${availableQuantity}`);
+        return response.data
+    } catch (error) {
+        console.error('Quantity fetch erro:r', error)
+    }
+
+};

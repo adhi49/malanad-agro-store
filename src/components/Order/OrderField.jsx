@@ -12,7 +12,7 @@ const OrderField = ({ selectedOrder, handleSelect, isEdit, dataList, orderStatus
                 <InputLabel id="item-label">Item</InputLabel>
                 <Select name="Item" value={selectedOrder.Item} onChange={handleSelect} disabled={isEdit}>
                     {dataList?.map((item) => (
-                        <MenuItem key={item.id} value={item.inventoryName}>
+                        <MenuItem key={item.id} value={item.id}>
                             {item.inventoryName}
                         </MenuItem>
                     ))}
@@ -39,9 +39,11 @@ const OrderField = ({ selectedOrder, handleSelect, isEdit, dataList, orderStatus
                     InputProps={{
                         endAdornment: <InputAdornment position="end">{selectedOrder.unit}</InputAdornment>
                     }}
-                    helperText={selectedOrder.availableQuantity !== undefined && selectedOrder.availableQuantity !== null
-                        ? `Available quantity is ${selectedOrder.availableQuantity}`
-                        : ''}
+                    helperText={
+                        selectedOrder.remainingQuantity !== undefined && selectedOrder.remainingQuantity !== null
+                            ? `Available quantity is ${selectedOrder.remainingQuantity}`
+                            : ''
+                    }
                 />
                 <FormControl sx={{ width: 250, marginLeft: 3, marginTop: 2 }}>
                     <InputLabel>Payment Status</InputLabel>
