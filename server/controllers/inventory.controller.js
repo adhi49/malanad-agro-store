@@ -1,31 +1,28 @@
 // controllers/inventory.controller.js
-import { pool } from '../config/db.js';
+import { pool } from "../config/db.js";
 
 export const createInventory = async (req, res) => {
-  const {
-    inventoryName,
-    category,
-    price,
-    unit,
-    sourceCompany,
-    availableQuantity,
-    paymentStatus
-  } = req.body;
+  const { inventoryName, category, price, unit, sourceCompany, availableQuantity, paymentStatus } = req.body;
 
   const requiredFields = [
-    "inventoryName", "category", "price", "unit",
-    "sourceCompany", "availableQuantity", "paymentStatus"
+    "inventoryName",
+    "category",
+    "price",
+    "unit",
+    "sourceCompany",
+    "availableQuantity",
+    "paymentStatus",
   ];
 
-  const missingFields = requiredFields.filter(field => {
+  const missingFields = requiredFields.filter((field) => {
     const value = req.body[field];
-    return value === undefined || value === null || value.toString().trim() === '';
+    return value === undefined || value === null || value.toString().trim() === "";
   });
 
   if (missingFields.length > 0) {
     return res.status(400).json({
       success: false,
-      message: `Missing fields: ${missingFields.join(', ')}`
+      message: `Missing fields: ${missingFields.join(", ")}`,
     });
   }
 
@@ -38,20 +35,27 @@ export const createInventory = async (req, res) => {
 
   try {
     const result = await pool.query(query, [
-      inventoryName, category, price, unit,
-      sourceCompany, availableQuantity, paymentStatus
+      inventoryName,
+      category,
+      price,
+      unit,
+      sourceCompany,
+      availableQuantity,
+      paymentStatus,
     ]);
-    res.status(201).json({ success: true, data: result.rows[0] });
+    res.status(201).json({ success: true, message: "Inventory saved successfully", data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
 export const getAllInventory = async (req, res) => {
+  console.log("inn-api");
   try {
-    const result = await pool.query("SELECT * FROM inventory_management ORDER BY created_at DESC;");
+    const result = await pool.query('SELECT * FROM inventory_management ORDER BY "createdAt" DESC;');
     res.status(200).json({ success: true, data: result.rows });
   } catch (err) {
+    console.log("eeee", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -76,10 +80,10 @@ export const updateInventory = async (req, res) => {
     return res.status(400).json({ success: false, message: "No fields to update" });
   }
 
-  const setClause = fields.map((field, i) => `"${field}" = $${i + 2}`).join(', ');
+  const setClause = fields.map((field, i) => `"${field}" = $${i + 2}`).join(", ");
   const query = `
     UPDATE inventory_management
-    SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+    SET ${setClause}, "updatedAt" = CURRENT_TIMESTAMP
     WHERE id = $1 RETURNING *;
   `;
 
@@ -88,7 +92,7 @@ export const updateInventory = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ success: false, message: "Inventory not found" });
     }
-    res.status(200).json({ success: true, data: result.rows[0] });
+    res.status(200).json({ success: true, message: "Inventory saved successfully", data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

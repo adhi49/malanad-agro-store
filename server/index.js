@@ -9,13 +9,25 @@ import orderRoutes from "./routes/order.routes.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-
+const PORT = process.env.PORT || 8000;
 
 // Middleware
-app.use(cors());
+// Enhanced CORS configuration
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
 
 // Health check
 app.get("/", (req, res) => {
@@ -25,7 +37,6 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/dashboard/inventory", inventoryRoutes);
 app.use("/api/dashboard/orders", orderRoutes);
-
 
 // Error handling middleware (optional but recommended)
 app.use((err, req, res, next) => {

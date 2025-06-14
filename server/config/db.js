@@ -4,11 +4,8 @@ import { Pool } from "pg";
 dotenv.config();
 
 export const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
+  connectionString: process.env.DATABASE_URL,
+  // ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
 
 pool.on("connect", () => {
@@ -19,3 +16,14 @@ pool.on("error", (err) => {
   console.error("🔴 Unexpected error on idle client", err);
   process.exit(-1);
 });
+
+// Actually test the connection when this module is imported
+// This will trigger the "connect" event above
+(async () => {
+  try {
+    const result = await pool.query("SELECT NOW() as current_time");
+    console.log(`📅 Database connection verified at: ${result.rows[0].current_time}`);
+  } catch (err) {
+    console.error("🔴 Failed to connect to database:", err.message);
+  }
+})();
