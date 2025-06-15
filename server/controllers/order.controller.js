@@ -187,14 +187,23 @@ export const updateOrder = async (req, res) => {
 };
 
 export const getUsedQuantity = async (req, res) => {
-  const { inventoryId, availableQuantity } = req.params;
-  console.log("Requested Inventory ID:", inventoryId, availableQuantity);
+  const { inventoryId } = req.params;
+  console.log("Requested Inventory ID:", inventoryId);
 
   try {
     const usedResult = await pool.query(
       `SELECT SUM(quantity) as total_used FROM used_inventory_quantity WHERE "inventoryId" = $1`,
       [inventoryId]
     );
+
+    const inventoryResult = await pool.query("SELECT * FROM inventory_management WHERE id = $1", [inventoryId]);
+
+    if (inventoryResult.rowCount === 0) {
+      return res.status(404).json({ error: "Inventory item not found" });
+    }
+
+    const inventoryItem = inventoryResult.rows[0];
+    const availableQuantity = inventoryItem.availableQuantity;
 
     const totalUsedQuantity = usedResult.rows[0]?.total_used || 0;
     const finalAvailable = availableQuantity - totalUsedQuantity;
@@ -205,7 +214,6 @@ export const getUsedQuantity = async (req, res) => {
       message: "Fetched successfully",
     });
   } catch (err) {
-    console.error("Error:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

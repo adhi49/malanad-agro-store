@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import { useEffect, useState } from "react";
 import OrderList from "../components/Order/OrderList";
 import OrderFormModal from "../components/Order/OrderFormModal";
@@ -7,10 +7,13 @@ import { getAllOrders, getOrderById } from "../api/order";
 const OrderPage = () => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [orderlist, setOrders] = useState([]);
-  const [selectedOrder, setSelectOrder] = useState(null);
+  const [orderData, setSelectOrder] = useState(null);
   const [ordersFetching, setFetching] = useState(false);
 
-  const handleCloseModal = () => setModalOpen(false);
+  const handleCloseModal = () => {
+    setSelectOrder(null);
+    setModalOpen(false);
+  };
 
   useEffect(() => {
     fetchAllOrders();
@@ -27,6 +30,7 @@ const OrderPage = () => {
     const response = await getOrderById(id);
     if (response?.data) {
       setSelectOrder(response.data);
+      setModalOpen(true);
     }
   };
 
@@ -42,7 +46,7 @@ const OrderPage = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         fetchAllOrders={fetchAllOrders}
-        editOrder={selectedOrder}
+        orderData={orderData}
       />
       <OrderList orderlist={orderlist} handleEdit={handleEdit} ordersFetching={ordersFetching} />
     </Box>

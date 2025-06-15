@@ -50,12 +50,10 @@ export const createInventory = async (req, res) => {
 };
 
 export const getAllInventory = async (req, res) => {
-  console.log("inn-api");
   try {
     const result = await pool.query('SELECT * FROM inventory_management ORDER BY "createdAt" DESC;');
     res.status(200).json({ success: true, data: result.rows });
   } catch (err) {
-    console.log("eeee", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -3,7 +3,6 @@ import { useAppContext } from "./AppContext";
 
 const GlobalAlert = () => {
   const { alertInfo = {} } = useAppContext();
-  console.log("====alertInfo====", alertInfo);
   return (
     <Snackbar
       open={!!alertInfo.isOpen}

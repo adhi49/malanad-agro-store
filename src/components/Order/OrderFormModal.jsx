@@ -125,6 +125,7 @@ const useFormValidation = () => {
   const validateField = useCallback((name, value, formData) => {
     const errors = {};
 
+    // eslint-disable-next-line default-case
     switch (name) {
       case "customerPhone":
         if (value && !/^\d{10,15}$/.test(value.replace(/\D/g, ""))) {
@@ -194,14 +195,14 @@ const useFormValidation = () => {
 };
 
 // Main component
-const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
+const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
   const { showAlert } = useAppContext();
   const [state, dispatch] = useReducer(orderFormReducer, initialState);
   const [inventoryList, setInventoryList] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const { validateField, validateForm } = useFormValidation();
 
-  const isEdit = Boolean(editOrder?.id);
+  const isEdit = Boolean(orderData?.id);
 
   // Memoized options for select fields
   const selectOptions = useMemo(
@@ -212,14 +213,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
       })),
       paymentStatus: Object.entries(PAYMENT_STATUS).map(([key, value]) => ({
         value,
-        label: key
+        label: value
           .split("_")
           .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
           .join(" "),
       })),
       orderStatus: Object.entries(ORDER_STATUS).map(([key, value]) => ({
         value,
-        label: key
+        label: value
           .split("_")
           .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
           .join(" "),
@@ -246,18 +247,19 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
       setInventoryList(result?.data || []);
     } catch (error) {
       console.error("Error fetching inventory:", error);
-      showAlert({ message: "Failed to fetch inventory", type: "error" });
+      showAlert?.({ message: "Failed to fetch inventory", type: "error" });
     } finally {
       setInventoryLoading(false);
     }
-  }, [showAlert]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch remaining quantity for selected inventory
-  const fetchRemainingQuantity = useCallback(async (inventoryId) => {
+  const fetchRemainingQuantity = useCallback(async (inventoryId, invQuantity) => {
     dispatch({ type: "SET_LOADING", payload: { quantity: true } });
     try {
-      const result = await fetchUsedQtyForInventory(inventoryId);
-      return result?.remainingQuantity || 0;
+      const result = await fetchUsedQtyForInventory(inventoryId, invQuantity);
+      return result?.availableQuantity || 0;
     } catch (error) {
       console.error("Error fetching remaining quantity:", error);
       return 0;
@@ -270,56 +272,56 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
   useEffect(() => {
     if (isOpen) {
       fetchInventory();
-      if (isEdit && editOrder) {
+      if (isEdit && orderData) {
         const formData = {
-          id: editOrder.id,
-          inventoryId: editOrder.inventoryid || "",
-          inventoryName: editOrder.inventoryname || "",
-          price: editOrder.price || "",
-          orderType: editOrder.ordertype || "",
-          quantity: editOrder.quantity || "",
-          customerName: editOrder.customername || "",
-          customerLocation: editOrder.customerlocation || "",
-          paymentStatus: (editOrder.paymentstatus || "").toUpperCase(),
-          orderStatus: editOrder.orderstatus || ORDER_STATUS.PENDING,
-          customerPhone: editOrder.customerphone || "",
-          unit: editOrder.unit || "",
-          remainingQuantity: editOrder.remainingQuantity || null,
+          id: orderData.id,
+          inventoryId: orderData.inventoryId || "",
+          inventoryName: orderData.inventoryName || "",
+          price: orderData.price || "",
+          orderType: orderData.orderType || "",
+          quantity: orderData.quantity || "",
+          customerName: orderData.customerName || "",
+          customerLocation: orderData.customerLocation || "",
+          paymentStatus: orderData.paymentStatus || "",
+          orderStatus: orderData.orderStatus || ORDER_STATUS.PENDING,
+          customerPhone: orderData.customerPhone || "",
+          unit: orderData.unit || "",
+          remainingQuantity: orderData.remainingQuantity || null,
         };
 
         dispatch({
           type: "SET_EDIT_DATA",
           payload: {
             formData,
-            orderStatusDisabled: editOrder.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING,
+            orderStatusDisabled: orderData.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING,
           },
         });
       } else {
         dispatch({ type: "RESET_FORM" });
       }
     }
-  }, [isOpen, isEdit, editOrder, fetchInventory]);
+  }, [isOpen, isEdit, orderData, fetchInventory]);
 
   // Handle input changes
   const handleInputChange = useCallback(
     async (event) => {
-      const { name, value } = event.target;
+      const { name, value: inventoryId } = event.target;
 
       // Clear field-specific errors
       dispatch({ type: "CLEAR_ERROR", payload: name });
 
       if (name === "inventoryId") {
-        const selectedItem = inventoryList.find((item) => item.id === value);
+        const selectedItem = inventoryList.find((item) => item.id === inventoryId);
         if (selectedItem) {
-          const remainingQty = await fetchRemainingQuantity(value);
+          const remainingQuantity = await fetchRemainingQuantity(inventoryId);
           dispatch({
             type: "SET_FORM_DATA",
             payload: {
-              inventoryId: value,
+              inventoryId,
               inventoryName: selectedItem.inventoryName,
               price: selectedItem.price,
               unit: selectedItem.unit,
-              remainingQuantity: remainingQty,
+              remainingQuantity,
             },
           });
         }
@@ -327,9 +329,9 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
         let newOrderStatus = ORDER_STATUS.INPROGRESS;
         let orderStatusDisabled = false;
 
-        if (value === PAYMENT_STATUS.COMPLETED) {
+        if (inventoryId === PAYMENT_STATUS.COMPLETED) {
           newOrderStatus = ORDER_STATUS.COMPLETED;
-        } else if (value === PAYMENT_STATUS.PENDING) {
+        } else if (inventoryId === PAYMENT_STATUS.PENDING) {
           newOrderStatus = ORDER_STATUS.PENDING;
           orderStatusDisabled = true;
         }
@@ -337,14 +339,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
         dispatch({ type: "SET_ORDER_STATUS_DISABLED", payload: orderStatusDisabled });
         dispatch({
           type: "SET_FORM_DATA",
-          payload: { [name]: value, orderStatus: newOrderStatus },
+          payload: { [name]: inventoryId, orderStatus: newOrderStatus },
         });
       } else {
-        dispatch({ type: "SET_FORM_DATA", payload: { [name]: value } });
+        dispatch({ type: "SET_FORM_DATA", payload: { [name]: inventoryId } });
       }
 
       // Real-time validation
-      const fieldErrors = validateField(name, value, state.formData);
+      const fieldErrors = validateField(name, inventoryId, state.formData);
       if (Object.keys(fieldErrors).length > 0) {
         dispatch({ type: "SET_ERRORS", payload: fieldErrors });
       }
@@ -352,41 +354,45 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
     [inventoryList, fetchRemainingQuantity, validateField, state.formData]
   );
 
+  const handleClose = useCallback(() => {
+    dispatch({ type: "RESET_FORM" });
+    onClose();
+  }, [onClose]);
+
   // Handle form submission
   const handleSave = useCallback(async () => {
     const { isValid, errors } = validateForm(state.formData);
 
     if (!isValid) {
       dispatch({ type: "SET_ERRORS", payload: errors });
-      showAlert({ message: "Please fix the errors in the form", type: "error" });
+      // showAlert({ message: "Please fix the errors in the form", type: "error" });
       return;
     }
 
     dispatch({ type: "SET_LOADING", payload: { form: true } });
 
     const payload = {
-      inventoryid: state.formData.inventoryId,
-      inventoryname: state.formData.inventoryName,
+      inventoryId: state.formData.inventoryId,
+      inventoryName: state.formData.inventoryName,
       unit: state.formData.unit || "unit",
-      ordertype: state.formData.orderType,
+      orderType: state.formData.orderType,
       price: state.formData.price,
       quantity: parseInt(state.formData.quantity),
-      customername: state.formData.customerName.trim(),
-      customerlocation: state.formData.customerLocation.trim(),
-      paymentstatus: state.formData.paymentStatus.toLowerCase(),
-      orderstatus: state.formData.orderStatus,
-      customerphone: state.formData.customerPhone.replace(/\D/g, ""),
+      customerName: state.formData.customerName.trim(),
+      customerLocation: state.formData.customerLocation.trim(),
+      paymentStatus: state.formData.paymentStatus,
+      orderStatus: state.formData.orderStatus,
+      customerPhone: state.formData.customerPhone.replace(/\D/g, ""),
     };
 
     try {
       if (state.formData.id) {
-        await updateOrder(state.formData.id, payload);
-        showAlert({ message: "Order updated successfully!", type: "success" });
+        const res = await updateOrder(state.formData.id, payload);
+        showAlert({ message: res.message, type: "success" });
       } else {
-        await addOrder(payload);
-        showAlert({ message: "Order created successfully!", type: "success" });
+        const res = await addOrder(payload);
+        showAlert({ message: res.message, type: "success" });
       }
-
       handleClose();
       fetchAllOrders();
     } catch (error) {
@@ -398,12 +404,7 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
     } finally {
       dispatch({ type: "SET_LOADING", payload: { form: false } });
     }
-  }, [state.formData, validateForm, showAlert, fetchAllOrders]);
-
-  const handleClose = useCallback(() => {
-    dispatch({ type: "RESET_FORM" });
-    onClose();
-  }, [onClose]);
+  }, [state.formData, validateForm, showAlert, fetchAllOrders, handleClose]);
 
   const renderField = useCallback(
     (field) => {
@@ -411,7 +412,6 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
       const isDisabled = disabled === "edit" ? isEdit : false;
       const value = state.formData[name] || "";
       const error = state.errors[name];
-
       const commonProps = {
         name,
         label,
@@ -469,14 +469,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, editOrder }) => {
 
   return (
     <Dialog open={isOpen} maxWidth="md" fullWidth>
-      <DialogTitle>{isEdit ? "Edit Order" : "Create New Order"}</DialogTitle>
+      <DialogTitle>{isEdit ? "Update Order" : "Create Order"}</DialogTitle>
       <DialogContent dividers>
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 1 }}>
           {/* Product Details Section */}
           <DialogTitle sx={{ pl: 0, pb: 2 }}>Product Details</DialogTitle>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 4 }}>
             {FORM_FIELDS.PRODUCT.map((field) => (
-              <Grid item xs={12} sm={4} key={field.name}>
+              <Grid item xs={12} sm={field.name === "orderType" ? 12 : 6} key={field.name}>
                 {renderField(field)}
               </Grid>
             ))}

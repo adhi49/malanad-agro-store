@@ -6,17 +6,14 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { useCallback } from "react";
+import BorderColorIcon from "@mui/icons-material/BorderColor";
+import { capitalizeFirst, formatDate, getFormatStatus } from "../../utils/commonFunc";
 
 const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN");
-  };
-
   const renderLoadingOrEmptySection = useCallback(() => {
     if (ordersFetching) {
       return <CircularProgress size={20} />;
@@ -30,14 +27,14 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
           <TableRow>
             <TableCell>Item</TableCell>
             <TableCell>Price</TableCell>
-            <TableCell>Order Type</TableCell>
+            <TableCell>Type</TableCell>
             <TableCell>Quantity</TableCell>
             <TableCell>Total</TableCell>
             <TableCell>Customer</TableCell>
-            <TableCell>Date</TableCell>
+            <TableCell>Order date</TableCell>
             <TableCell>Payment</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Actions</TableCell>
+            <TableCell>Action</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -51,19 +48,19 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
           {orderlist?.length > 0 &&
             orderlist?.map((order) => (
               <TableRow key={order.id}>
-                <TableCell>{order.inventoryname}</TableCell>
+                <TableCell>{order.inventoryName}</TableCell>
                 <TableCell>₹{order.price}</TableCell>
-                <TableCell>{order.ordertype}</TableCell>
+                <TableCell>{capitalizeFirst(order.orderType)}</TableCell>
                 <TableCell>{order.quantity}</TableCell>
                 <TableCell>₹{order.price * order.quantity}</TableCell>
-                <TableCell>{order.customername}</TableCell>
-                <TableCell>{formatDate(order.created_at)}</TableCell>
-                <TableCell>{order.paymentstatus}</TableCell>
-                <TableCell>{order.orderstatus}</TableCell>
+                <TableCell>{order.customerName}</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>{formatDate(order.createdAt)}</TableCell>
+                <TableCell>{getFormatStatus(order.paymentStatus)}</TableCell>
+                <TableCell>{getFormatStatus(order.orderStatus)}</TableCell>
                 <TableCell>
-                  <Button variant="outlined" size="small" onClick={() => handleEdit(order.id)}>
-                    Edit
-                  </Button>
+                  <IconButton variant="contained" color="success" onClick={() => handleEdit(order.id)}>
+                    <BorderColorIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
