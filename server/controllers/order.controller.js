@@ -208,6 +208,7 @@ export const getUsedQuantity = async (req, res) => {
     const totalUsedQuantity = usedResult.rows[0]?.total_used || 0;
     const finalAvailable = availableQuantity - totalUsedQuantity;
 
+
     res.status(200).json({
       used: Number(totalUsedQuantity),
       availableQuantity: finalAvailable,

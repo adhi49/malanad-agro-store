@@ -34,15 +34,14 @@ const PAYMENT_STATUS = {
 };
 
 const ORDER_TYPES = {
-  SELL: "sell",
-  RENT: "rent",
+  SELL: "Sell",
+  RENT: "Rent",
 };
-
 // Form field configuration
 const FORM_FIELDS = {
   PRODUCT: [
-    { name: "inventoryId", label: "Item", type: "select", required: true, disabled: "edit" },
     { name: "orderType", label: "Order Type", type: "radio", required: true, disabled: "edit" },
+    { name: "inventoryId", label: "Item", type: "select", required: true, disabled: "edit" },
     { name: "quantity", label: "Quantity", type: "number", required: true, disabled: "edit" },
     { name: "paymentStatus", label: "Payment Status", type: "select", required: true },
   ],
@@ -204,10 +203,20 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
 
   const isEdit = Boolean(orderData?.id);
 
+  const orderType = state.formData?.orderType;
+
   // Memoized options for select fields
-  const selectOptions = useMemo(
-    () => ({
-      inventoryId: inventoryList.map((item) => ({
+  const selectOptions = useMemo(() => {
+    const filteredInventory = inventoryList.filter((item) =>
+      orderType === "Sell"
+        ? item.inventoryType === "Sell"
+        : orderType === "Rent"
+          ? item.inventoryType === "Rent"
+          : true
+    );
+
+    return {
+      inventoryId: filteredInventory.map((item) => ({
         value: item.id,
         label: item.inventoryName,
       })),
@@ -225,9 +234,9 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
           .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
           .join(" "),
       })),
-    }),
-    [inventoryList]
-  );
+    };
+  }, [inventoryList, orderType]);
+
 
   const radioOptions = useMemo(
     () => ({
@@ -274,11 +283,11 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
       fetchInventory();
       if (isEdit && orderData) {
         const formData = {
+          orderType: orderData.orderType || "",
           id: orderData.id,
           inventoryId: orderData.inventoryId || "",
           inventoryName: orderData.inventoryName || "",
           price: orderData.price || "",
-          orderType: orderData.orderType || "",
           quantity: orderData.quantity || "",
           customerName: orderData.customerName || "",
           customerLocation: orderData.customerLocation || "",
@@ -372,10 +381,10 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
     dispatch({ type: "SET_LOADING", payload: { form: true } });
 
     const payload = {
+      orderType: state.formData.orderType,
       inventoryId: state.formData.inventoryId,
       inventoryName: state.formData.inventoryName,
       unit: state.formData.unit || "unit",
-      orderType: state.formData.orderType,
       price: state.formData.price,
       quantity: parseInt(state.formData.quantity),
       customerName: state.formData.customerName.trim(),
@@ -474,14 +483,22 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
         <Box sx={{ p: 1 }}>
           {/* Product Details Section */}
           <DialogTitle sx={{ pl: 0, pb: 2 }}>Product Details</DialogTitle>
-          <Grid container spacing={2} sx={{ mb: 4 }}>
-            {FORM_FIELDS.PRODUCT.map((field) => (
-              <Grid item xs={12} sm={field.name === "orderType" ? 12 : 6} key={field.name}>
+          <Grid>
+            {/* First show only the orderType field */}
+            {FORM_FIELDS.PRODUCT.filter((field) => field.name === "orderType").map((field) => (
+              <Grid item xs={12} key={field.name}>
                 {renderField(field)}
               </Grid>
             ))}
+            <Grid container spacing={2} marginTop={2}>
+              {/* Then show the rest of the product fields */}
+              {FORM_FIELDS.PRODUCT.filter((field) => field.name !== "orderType").map((field) => (
+                <Grid item xs={6} key={field.name}>
+                  {renderField(field)}
+                </Grid>
+              ))}
+            </Grid>
           </Grid>
-
           {/* Customer Details Section */}
           <DialogTitle sx={{ pl: 0, pb: 2 }}>Customer Details</DialogTitle>
           <Grid container spacing={2}>

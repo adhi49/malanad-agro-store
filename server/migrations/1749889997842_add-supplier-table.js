@@ -22,6 +22,7 @@ export const up = (pgm) => {
       type: "decimal(10,2)",
       notNull: true,
     },
+
     unit: {
       type: "varchar(50)",
       notNull: true,
@@ -39,6 +40,7 @@ export const up = (pgm) => {
       type: "varchar(50)",
       notNull: true,
     },
+
     createdAt: {
       type: "timestamp",
       notNull: true,
@@ -48,6 +50,14 @@ export const up = (pgm) => {
       type: "timestamp",
       notNull: true,
       default: pgm.func("current_timestamp"),
+    },
+    inventoryType: {
+      type: "varchar(50)",
+      notNull: true
+    },
+    sellingPrice: {
+      type: "decimal(10,2)",
+      notNull: true
     },
   });
 
@@ -65,7 +75,15 @@ export const up = (pgm) => {
       type: "varchar(255)",
       notNull: true,
     },
+    inventoryType: {
+      type: "varchar(50)",
+      notNull: true,
+    },
     price: {
+      type: "decimal(10,2)",
+      notNull: true,
+    },
+    SellingPrice: {
       type: "decimal(10,2)",
       notNull: true,
     },

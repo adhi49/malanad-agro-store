@@ -44,6 +44,15 @@ const InventoryModal = ({ isOpen, onClose, saveInventory, formData, setFormData 
               <MenuItem value="Seeds">Seeds</MenuItem>
               <MenuItem value="Pesticides">Pesticides</MenuItem>
               <MenuItem value="Tools">Tools</MenuItem>
+              <MenuItem value="Machine">Machine</MenuItem>
+
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Inventory Type</InputLabel>
+            <Select name="inventoryType" value={formData.inventoryType} onChange={handleChange}>
+              <MenuItem value="Sell">Sell</MenuItem>
+              <MenuItem value="Rent">Rent</MenuItem>
             </Select>
           </FormControl>
           <TextField
@@ -54,6 +63,14 @@ const InventoryModal = ({ isOpen, onClose, saveInventory, formData, setFormData 
             onChange={handleChange}
             fullWidth
           />
+          <TextField
+            label="Selling Price"
+            name="sellOrRentPrice"
+            type="number"
+            value={formData.sellOrRentPrice}
+            onChange={handleChange}
+            fullWidth
+          />
           <FormControl fullWidth>
             <InputLabel>Unit</InputLabel>
             <Select name="unit" value={formData.unit} onChange={handleChange}>
@@ -61,6 +78,8 @@ const InventoryModal = ({ isOpen, onClose, saveInventory, formData, setFormData 
               <MenuItem value="litre">Litre</MenuItem>
               <MenuItem value="packet">Packet</MenuItem>
               <MenuItem value="bottle">Bottle</MenuItem>
+              <MenuItem value="watts">Watts</MenuItem>
+
             </Select>
           </FormControl>
 
@@ -71,6 +90,8 @@ const InventoryModal = ({ isOpen, onClose, saveInventory, formData, setFormData 
               <MenuItem value="J J Power Tools">J J Power Tools</MenuItem>
               <MenuItem value="Madayikkan">Madayikkan</MenuItem>
               <MenuItem value="T stanes & company">T stanes & company</MenuItem>
+              <MenuItem value="HI-5 Agricultural Equipment">HI-5 Agricultural Equipment</MenuItem>
+
             </Select>
           </FormControl>
           <TextField

@@ -26,7 +26,9 @@ const InventoryList = ({ dataList, handleGetInventory, handleDeleteInventory }) 
           <TableRow>
             <TableCell>Inventory Name</TableCell>
             <TableCell>Category</TableCell>
+            <TableCell>Inventory Type</TableCell>
             <TableCell>Price</TableCell>
+            <TableCell>Sell/Rent Price</TableCell>
             <TableCell>Unit</TableCell>
             <TableCell>Source</TableCell>
             <TableCell>Quantity</TableCell>
@@ -39,7 +41,9 @@ const InventoryList = ({ dataList, handleGetInventory, handleDeleteInventory }) 
             <TableRow key={inventory.id}>
               <TableCell>{inventory.inventoryName}</TableCell>
               <TableCell>{inventory.category}</TableCell>
+              <TableCell>{inventory.inventoryType}</TableCell>
               <TableCell>{inventory.price}</TableCell>
+              <TableCell>{inventory.sellOrRentPrice}</TableCell>
               <TableCell>{inventory.unit}</TableCell>
               <TableCell>{inventory.sourceCompany}</TableCell>
               <TableCell>{inventory.availableQuantity}</TableCell>

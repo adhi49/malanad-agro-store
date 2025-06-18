@@ -2,7 +2,7 @@
 import { pool } from "../config/db.js";
 
 export const createInventory = async (req, res) => {
-  const { inventoryName, category, price, unit, sourceCompany, availableQuantity, paymentStatus } = req.body;
+  const { inventoryName, category, price, unit, sourceCompany, availableQuantity, paymentStatus, inventoryType, sellOrRentPrice } = req.body;
 
   const requiredFields = [
     "inventoryName",
@@ -12,6 +12,8 @@ export const createInventory = async (req, res) => {
     "sourceCompany",
     "availableQuantity",
     "paymentStatus",
+    "inventoryType",
+    "sellOrRentPrice"
   ];
 
   const missingFields = requiredFields.filter((field) => {
@@ -29,8 +31,8 @@ export const createInventory = async (req, res) => {
   const query = `
     INSERT INTO inventory_management (
       "inventoryName", category, price, unit,
-      "sourceCompany", "availableQuantity", "paymentStatus"
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+      "sourceCompany", "availableQuantity", "paymentStatus","inventoryType","sellOrRentPrice"
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
   `;
 
   try {
@@ -42,6 +44,8 @@ export const createInventory = async (req, res) => {
       sourceCompany,
       availableQuantity,
       paymentStatus,
+      inventoryType,
+      sellOrRentPrice,
     ]);
     res.status(201).json({ success: true, message: "Inventory saved successfully", data: result.rows[0] });
   } catch (err) {

@@ -4,6 +4,7 @@ import InventoryModal from "../components/inventory/InventoryModal";
 import { addInventory, deleteInventory, getInventory, getInventoryById, updateInventory } from "../api/inventory";
 import InventoryList from "../components/inventory/InventoryList";
 import { useAppContext } from "../AppContext";
+import InventoryCard from "../components/inventory/inventoryCard";
 
 const initialState = {
   inventoryName: "",
@@ -13,6 +14,8 @@ const initialState = {
   sourceCompany: "",
   availableQuantity: "",
   paymentStatus: "",
+  inventoryType: "",
+  sellOrRentPrice: "",
 };
 
 const Inventory = () => {
@@ -47,6 +50,8 @@ const Inventory = () => {
         sourceCompany: formData.sourceCompany,
         availableQuantity: formData.availableQuantity,
         paymentStatus: formData.paymentStatus,
+        inventoryType: formData.inventoryType,
+        sellOrRentPrice: formData.sellOrRentPrice
       };
 
       let response;
