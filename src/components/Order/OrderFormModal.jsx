@@ -18,6 +18,8 @@ import SelectField from "../common/SelectField";
 import RadioField from "../common/RadioField";
 import TextFieldComponent from "../common/TextField";
 import "react-datepicker/dist/react-datepicker.css";
+import DateTimePicker from "../common/DateTimePicker";
+import { getFormatStatus } from "../../utils/commonFunc";
 
 // Constants
 const ORDER_STATUS = {
@@ -38,15 +40,15 @@ const ORDER_TYPES = {
   SELL: "Sell",
   RENT: "Rent",
 };
+
 // Form field configuration
 const FORM_FIELDS = {
   PRODUCT: [
     { name: "orderType", label: "Order Type", type: "radio", required: true, disabled: "edit" },
     { name: "inventoryId", label: "Item", type: "select", required: true, disabled: "edit" },
     { name: "quantity", label: "Quantity", type: "number", required: true, disabled: "edit" },
+    { name: "dueDateTime", label: "Due Date ", type: "date", required: false },
     { name: "paymentStatus", label: "Payment Status", type: "select", required: true },
-    { name: "dueDateTime", label: "Due Date ", type: "number", required: true },
-
   ],
   CUSTOMER: [
     { name: "customerName", label: "Customer Name", type: "text", required: true },
@@ -71,7 +73,7 @@ const initialState = {
     customerPhone: "",
     unit: "",
     remainingQuantity: null,
-    dueDateTime: null
+    dueDateTime: null,
   },
   loading: {
     form: false,
@@ -153,6 +155,11 @@ const useFormValidation = () => {
           errors[name] = "Location must be at least 3 characters";
         }
         break;
+      case "dueDateTime":
+        if (formData?.orderType === ORDER_TYPES.RENT && !value) {
+          errors[name] = "Due date & time is required";
+        }
+        break;
     }
 
     return errors;
@@ -168,6 +175,7 @@ const useFormValidation = () => {
         "customerLocation",
         "paymentStatus",
         "customerPhone",
+        ...(formData?.orderType === ORDER_TYPES.RENT ? ["dueDateTime"] : []),
       ];
       const errors = {};
 
@@ -211,12 +219,9 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
 
   // Memoized options for select fields
   const selectOptions = useMemo(() => {
+    const validTypes = new Set([ORDER_TYPES.SELL, ORDER_TYPES.RENT]);
     const filteredInventory = inventoryList.filter((item) =>
-      orderType === "Sell"
-        ? item.inventoryType === "Sell"
-        : orderType === "Rent"
-          ? item.inventoryType === "Rent"
-          : true
+      validTypes.has(orderType) ? item.inventoryType === orderType : false
     );
 
     return {
@@ -226,21 +231,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
       })),
       paymentStatus: Object.entries(PAYMENT_STATUS).map(([key, value]) => ({
         value,
-        label: value
-          .split("_")
-          .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-          .join(" "),
+        label: getFormatStatus(value),
       })),
       orderStatus: Object.entries(ORDER_STATUS).map(([key, value]) => ({
         value,
-        label: value
-          .split("_")
-          .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-          .join(" "),
+        label: getFormatStatus(value),
       })),
     };
   }, [inventoryList, orderType]);
-
 
   const radioOptions = useMemo(
     () => ({
@@ -300,13 +298,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
           customerPhone: orderData.customerPhone || "",
           unit: orderData.unit || "",
           remainingQuantity: orderData.remainingQuantity || null,
+          dueDateTime: new Date(orderData?.dueDateTime || null),
         };
 
         dispatch({
           type: "SET_EDIT_DATA",
           payload: {
             formData,
-            orderStatusDisabled: orderData.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING,
+            orderStatusDisabled: orderData?.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING,
           },
         });
       } else {
@@ -315,22 +314,38 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
     }
   }, [isOpen, isEdit, orderData, fetchInventory]);
 
+  const handleDateChange = (date) => {
+    dispatch({ type: "SET_FORM_DATA", payload: { dueDateTime: date ?? null } });
+  };
+
   // Handle input changes
   const handleInputChange = useCallback(
     async (event) => {
-      const { name, value: inventoryId } = event.target;
+      const { name, value: fieldValue } = event.target;
 
       // Clear field-specific errors
       dispatch({ type: "CLEAR_ERROR", payload: name });
 
-      if (name === "inventoryId") {
-        const selectedItem = inventoryList.find((item) => item.id === inventoryId);
+      if (name === "orderType") {
+        dispatch({
+          type: "SET_FORM_DATA",
+          payload: {
+            orderType: fieldValue,
+            inventoryId: null,
+            inventoryName: "",
+            price: null,
+            unit: "",
+            remainingQuantity: 0,
+          },
+        });
+      } else if (name === "inventoryId") {
+        const selectedItem = inventoryList.find((item) => item.id === fieldValue);
         if (selectedItem) {
-          const remainingQuantity = await fetchRemainingQuantity(inventoryId);
+          const remainingQuantity = await fetchRemainingQuantity(fieldValue);
           dispatch({
             type: "SET_FORM_DATA",
             payload: {
-              inventoryId,
+              inventoryId: fieldValue,
               inventoryName: selectedItem.inventoryName,
               price: selectedItem.price,
               unit: selectedItem.unit,
@@ -342,9 +357,9 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
         let newOrderStatus = ORDER_STATUS.INPROGRESS;
         let orderStatusDisabled = false;
 
-        if (inventoryId === PAYMENT_STATUS.COMPLETED) {
+        if (fieldValue === PAYMENT_STATUS.COMPLETED) {
           newOrderStatus = ORDER_STATUS.COMPLETED;
-        } else if (inventoryId === PAYMENT_STATUS.PENDING) {
+        } else if (fieldValue === PAYMENT_STATUS.PENDING) {
           newOrderStatus = ORDER_STATUS.PENDING;
           orderStatusDisabled = true;
         }
@@ -352,14 +367,14 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
         dispatch({ type: "SET_ORDER_STATUS_DISABLED", payload: orderStatusDisabled });
         dispatch({
           type: "SET_FORM_DATA",
-          payload: { [name]: inventoryId, orderStatus: newOrderStatus },
+          payload: { [name]: fieldValue, orderStatus: newOrderStatus },
         });
       } else {
-        dispatch({ type: "SET_FORM_DATA", payload: { [name]: inventoryId } });
+        dispatch({ type: "SET_FORM_DATA", payload: { [name]: fieldValue } });
       }
 
       // Real-time validation
-      const fieldErrors = validateField(name, inventoryId, state.formData);
+      const fieldErrors = validateField(name, fieldValue, state.formData);
       if (Object.keys(fieldErrors).length > 0) {
         dispatch({ type: "SET_ERRORS", payload: fieldErrors });
       }
@@ -396,6 +411,7 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
       paymentStatus: state.formData.paymentStatus,
       orderStatus: state.formData.orderStatus,
       customerPhone: state.formData.customerPhone.replace(/\D/g, ""),
+      dueDateTime: state?.formData?.dueDateTime?.toISOString() || null,
     };
 
     try {
@@ -457,17 +473,33 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
                 ) : undefined
               }
               helperText={
-                name === "quantity" && state.formData.remainingQuantity !== null
-                  ? `Available: ${state.formData.remainingQuantity} ${state.formData.unit || "units"}`
+                name === "quantity" && state.formData?.inventoryId && state.formData.remainingQuantity !== null
+                  ? `Available: ${state.formData?.remainingQuantity} ${state.formData.unit || "units"}`
                   : undefined
               }
             />
+          );
+        case "date":
+          return (
+            orderType === ORDER_TYPES.RENT && (
+              <DateTimePicker
+                {...commonProps}
+                selected={state.formData.dueDateTime}
+                placeholder="Choose date & time"
+                label="Due Date & Time"
+                minDate={new Date()}
+                onChange={handleDateChange}
+                textFieldProps={{
+                  helperText: error,
+                }}
+              />
+            )
           );
         default:
           return <TextFieldComponent {...commonProps} type={type} />;
       }
     },
-    [state, isEdit, handleInputChange, selectOptions, radioOptions]
+    [state, isEdit, handleInputChange, selectOptions, radioOptions, orderType]
   );
 
   if (inventoryLoading) {

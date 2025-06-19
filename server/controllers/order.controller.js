@@ -1,6 +1,11 @@
 // controllers/order.controller.js
 import { pool } from "../config/db.js";
 
+const ORDER_TYPES = {
+  SELL: "Sell",
+  RENT: "Rent",
+};
+
 export const createOrder = async (req, res) => {
   const {
     inventoryId,
@@ -13,9 +18,10 @@ export const createOrder = async (req, res) => {
     paymentStatus,
     orderStatus,
     customerPhone,
-    dueDateTime
+    dueDateTime,
   } = req.body;
 
+  console.log({ orderType });
   const requiredFields = [
     "inventoryId",
     "inventoryName",
@@ -27,9 +33,8 @@ export const createOrder = async (req, res) => {
     "paymentStatus",
     "orderStatus",
     "customerPhone",
-    "dueDateTime"
+    ...(orderType === ORDER_TYPES.RENT ? ["dueDateTime"] : []),
   ];
-
 
   const missingFields = requiredFields.filter((field) => {
     const value = req.body[field];
@@ -61,8 +66,17 @@ export const createOrder = async (req, res) => {
   try {
     const query = `
         INSERT INTO orders (
-          "inventoryId", "inventoryName", price, "orderType", quantity,
-          "customerName", "customerLocation", "paymentStatus", "orderStatus", "customerPhone"
+          "inventoryId",
+          "inventoryName",
+          "price",
+          "orderType",
+          "quantity",
+          "customerName",
+          "customerLocation",
+          "paymentStatus",
+          "orderStatus",
+          "customerPhone",
+          "dueDateTime"
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *;
       `;
@@ -77,7 +91,7 @@ export const createOrder = async (req, res) => {
       paymentStatus,
       orderStatus,
       customerPhone,
-      dueDateTime
+      dueDateTime,
     ]);
 
     await pool.query(
@@ -211,7 +225,6 @@ export const getUsedQuantity = async (req, res) => {
 
     const totalUsedQuantity = usedResult.rows[0]?.total_used || 0;
     const finalAvailable = availableQuantity - totalUsedQuantity;
-
 
     res.status(200).json({
       used: Number(totalUsedQuantity),
