@@ -17,6 +17,7 @@ import { useAppContext } from "../../AppContext";
 import SelectField from "../common/SelectField";
 import RadioField from "../common/RadioField";
 import TextFieldComponent from "../common/TextField";
+import "react-datepicker/dist/react-datepicker.css";
 
 // Constants
 const ORDER_STATUS = {
@@ -44,6 +45,8 @@ const FORM_FIELDS = {
     { name: "inventoryId", label: "Item", type: "select", required: true, disabled: "edit" },
     { name: "quantity", label: "Quantity", type: "number", required: true, disabled: "edit" },
     { name: "paymentStatus", label: "Payment Status", type: "select", required: true },
+    { name: "dueDateTime", label: "Due Date ", type: "number", required: true },
+
   ],
   CUSTOMER: [
     { name: "customerName", label: "Customer Name", type: "text", required: true },
@@ -68,6 +71,7 @@ const initialState = {
     customerPhone: "",
     unit: "",
     remainingQuantity: null,
+    dueDateTime: null
   },
   loading: {
     form: false,

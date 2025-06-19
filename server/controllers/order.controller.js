@@ -13,6 +13,7 @@ export const createOrder = async (req, res) => {
     paymentStatus,
     orderStatus,
     customerPhone,
+    dueDateTime
   } = req.body;
 
   const requiredFields = [
@@ -26,7 +27,9 @@ export const createOrder = async (req, res) => {
     "paymentStatus",
     "orderStatus",
     "customerPhone",
+    "dueDateTime"
   ];
+
 
   const missingFields = requiredFields.filter((field) => {
     const value = req.body[field];
@@ -60,7 +63,7 @@ export const createOrder = async (req, res) => {
         INSERT INTO orders (
           "inventoryId", "inventoryName", price, "orderType", quantity,
           "customerName", "customerLocation", "paymentStatus", "orderStatus", "customerPhone"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *;
       `;
     const result = await pool.query(query, [
@@ -74,6 +77,7 @@ export const createOrder = async (req, res) => {
       paymentStatus,
       orderStatus,
       customerPhone,
+      dueDateTime
     ]);
 
     await pool.query(

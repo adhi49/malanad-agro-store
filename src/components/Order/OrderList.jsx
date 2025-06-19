@@ -57,6 +57,8 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
                 <TableCell sx={{ minWidth: 150 }}>{formatDate(order.createdAt)}</TableCell>
                 <TableCell>{getFormatStatus(order.paymentStatus)}</TableCell>
                 <TableCell>{getFormatStatus(order.orderStatus)}</TableCell>
+
+
                 <TableCell>
                   <IconButton variant="contained" color="success" onClick={() => handleEdit(order.id)}>
                     <BorderColorIcon />
