@@ -1,3 +1,4 @@
+import Dashboard from "../pages/Dashboard";
 import Inventory from "../pages/Inventory";
 import OrderPage from "../pages/OrderPage";
 
@@ -11,6 +12,10 @@ const AdminRoutes = {
         {
             path: 'orders',
             element: <OrderPage />
+        },
+        {
+            path: 'dashboard',
+            element: <Dashboard />
         }
     ]
 };
