@@ -1,7 +1,8 @@
 import React from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { TextField } from "@mui/material";
+import { FormControl, FormHelperText, TextField } from "@mui/material";
+import { formatDate } from "../../utils/commonFunc";
 
 const DateTimePicker = ({
   selected,
@@ -13,7 +14,8 @@ const DateTimePicker = ({
   showTimeSelect = true,
   dateFormat = "dd-MM-yyyy h:mm aa",
   disabled = false,
-  textFieldProps = {},
+  error = "",
+  helperText = "",
 }) => {
   return (
     <DatePicker
@@ -28,14 +30,27 @@ const DateTimePicker = ({
       placeholderText={placeholder}
       disabled={disabled}
       customInput={
-        <TextField
-          label={label}
-          fullWidth
-          variant="outlined"
-          disabled={disabled}
-          {...textFieldProps}
-          error={!!textFieldProps?.helperText}
-        />
+        <FormControl>
+          <TextField
+            value={formatDate(selected)}
+            label={label}
+            fullWidth
+            variant="outlined"
+            disabled={disabled}
+            slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
+            }}
+          />
+          {(error || helperText) && (
+            <FormHelperText
+              sx={{ ml: 0, pl: 0, color: error ? "error.main" : "text.secondary", fontSize: "0.75rem", mt: 0.5 }}
+            >
+              {error || helperText}
+            </FormHelperText>
+          )}
+        </FormControl>
       }
     />
   );

@@ -1,7 +1,7 @@
-import { Box, FormControl, FormControlLabel, FormLabel, Radio, RadioGroup } from "@mui/material";
+import { Box, FormControl, FormControlLabel, FormHelperText, FormLabel, Radio, RadioGroup } from "@mui/material";
 
 const RadioField = ({ name, label, value, onChange, options, disabled, required, error }) => (
-  <FormControl disabled={disabled} error={!!error}>
+  <FormControl disabled={disabled}>
     <FormLabel>
       {label} {required && "*"}
     </FormLabel>
@@ -10,7 +10,9 @@ const RadioField = ({ name, label, value, onChange, options, disabled, required,
         <FormControlLabel key={option.value} value={option.value} control={<Radio />} label={option.label} />
       ))}
     </RadioGroup>
-    {error && <Box sx={{ color: "error.main", fontSize: "0.75rem", mt: 0.5 }}>{error}</Box>}
+    {error && (
+      <FormHelperText sx={{ color: "error.main", fontSize: "0.75rem", mt: 0.5, ml: 0, pl: 0 }}>{error}</FormHelperText>
+    )}
   </FormControl>
 );
 

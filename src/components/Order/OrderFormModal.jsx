@@ -8,9 +8,9 @@ import {
   Box,
   Grid,
   CircularProgress,
-  Alert,
+  FormControl,
 } from "@mui/material";
-import { useEffect, useState, useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getInventory } from "../../api/inventory";
 import { addOrder, fetchUsedQtyForInventory, updateOrder } from "../../api/order";
 import { useAppContext } from "../../AppContext";
@@ -41,216 +41,259 @@ const ORDER_TYPES = {
   RENT: "Rent",
 };
 
-// Form field configuration
-const FORM_FIELDS = {
-  PRODUCT: [
-    { name: "orderType", label: "Order Type", type: "radio", required: true, disabled: "edit" },
-    { name: "inventoryId", label: "Item", type: "select", required: true, disabled: "edit" },
-    { name: "quantity", label: "Quantity", type: "number", required: true, disabled: "edit" },
-    { name: "dueDateTime", label: "Due Date ", type: "date", required: false },
-    { name: "paymentStatus", label: "Payment Status", type: "select", required: true },
-  ],
-  CUSTOMER: [
-    { name: "customerName", label: "Customer Name", type: "text", required: true },
-    { name: "customerPhone", label: "Phone Number", type: "tel", required: true },
-    { name: "customerLocation", label: "Location", type: "text", required: true },
-    { name: "orderStatus", label: "Order Status", type: "select", required: false },
-  ],
-};
+// Helper function to calculate rental price
+const calculateRentalPrice = (sellOrRentPrice, dueDateTime) => {
+  if (!sellOrRentPrice || !dueDateTime) return 0;
 
-// Initial state
-const initialState = {
-  formData: {
-    inventoryId: "",
-    inventoryName: "",
-    price: "",
-    orderType: "",
-    quantity: "",
-    customerName: "",
-    customerLocation: "",
-    paymentStatus: "",
-    orderStatus: ORDER_STATUS.PENDING,
-    customerPhone: "",
-    unit: "",
-    remainingQuantity: null,
-    dueDateTime: null,
-  },
-  loading: {
-    form: false,
-    quantity: false,
-  },
-  errors: {},
-  orderStatusDisabled: true,
-};
+  const now = new Date();
+  const due = new Date(dueDateTime);
 
-// Reducer for complex state management
-const orderFormReducer = (state, action) => {
-  switch (action.type) {
-    case "SET_FORM_DATA":
-      return {
-        ...state,
-        formData: { ...state.formData, ...action.payload },
-      };
-    case "SET_LOADING":
-      return {
-        ...state,
-        loading: { ...state.loading, ...action.payload },
-      };
-    case "SET_ERRORS":
-      return {
-        ...state,
-        errors: { ...state.errors, ...action.payload },
-      };
-    case "CLEAR_ERROR":
-      const { [action.payload]: removed, ...restErrors } = state.errors;
-      return {
-        ...state,
-        errors: restErrors,
-      };
-    case "SET_ORDER_STATUS_DISABLED":
-      return {
-        ...state,
-        orderStatusDisabled: action.payload,
-      };
-    case "RESET_FORM":
-      return initialState;
-    case "SET_EDIT_DATA":
-      return {
-        ...state,
-        formData: action.payload.formData,
-        orderStatusDisabled: action.payload.orderStatusDisabled,
-      };
-    default:
-      return state;
+  const diffMs = due.getTime() - now.getTime();
+
+  if (diffMs <= 0) return 0;
+
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours >= 24) {
+    const diffDays = Math.ceil(diffHours / 24);
+    return sellOrRentPrice * diffDays;
+  } else {
+    const hourlyRate = sellOrRentPrice / 24;
+    const hours = Math.ceil(diffHours);
+    return hourlyRate * hours;
   }
 };
 
-// Custom hook for form validation
-const useFormValidation = () => {
-  const validateField = useCallback((name, value, formData) => {
-    const errors = {};
+const getPriceBreakdown = (sellOrRentPrice, dueDateTime, orderType) => {
+  if (orderType !== ORDER_TYPES.RENT || !sellOrRentPrice || !dueDateTime) return "";
 
-    // eslint-disable-next-line default-case
-    switch (name) {
-      case "customerPhone":
-        if (value && !/^\d{10,15}$/.test(value.replace(/\D/g, ""))) {
-          errors[name] = "Please enter a valid phone number (10-15 digits)";
-        }
-        break;
-      case "quantity":
-        if (value && formData.remainingQuantity !== null && parseInt(value) > formData.remainingQuantity) {
-          errors[name] = "Quantity cannot exceed available quantity";
-        }
-        if (value && parseInt(value) <= 0) {
-          errors[name] = "Quantity must be greater than 0";
-        }
-        break;
-      case "customerName":
-        if (value && value.trim().length < 2) {
-          errors[name] = "Name must be at least 2 characters";
-        }
-        break;
-      case "customerLocation":
-        if (value && value.trim().length < 3) {
-          errors[name] = "Location must be at least 3 characters";
-        }
-        break;
-      case "dueDateTime":
-        if (formData?.orderType === ORDER_TYPES.RENT && !value) {
-          errors[name] = "Due date & time is required";
-        }
-        break;
-    }
+  const now = new Date();
+  const due = new Date(dueDateTime);
+  const diffMs = due.getTime() - now.getTime();
 
-    return errors;
-  }, []);
+  if (diffMs <= 0) return "Due date must be in the future";
 
-  const validateForm = useCallback(
-    (formData) => {
-      const requiredFields = [
-        "inventoryId",
-        "orderType",
-        "quantity",
-        "customerName",
-        "customerLocation",
-        "paymentStatus",
-        "customerPhone",
-        ...(formData?.orderType === ORDER_TYPES.RENT ? ["dueDateTime"] : []),
-      ];
-      const errors = {};
+  const diffHours = diffMs / (1000 * 60 * 60);
 
-      requiredFields.forEach((field) => {
-        if (!formData[field] || (typeof formData[field] === "string" && !formData[field].trim())) {
-          errors[field] = `${field
-            .replace(/([A-Z])/g, " $1")
-            .toLowerCase()
-            .replace(/^\w/, (c) => c.toUpperCase())} is required`;
-        }
-      });
-
-      // Additional validations
-      Object.keys(formData).forEach((field) => {
-        const fieldErrors = validateField(field, formData[field], formData);
-        Object.assign(errors, fieldErrors);
-      });
-
-      return {
-        isValid: Object.keys(errors).length === 0,
-        errors,
-      };
-    },
-    [validateField]
-  );
-
-  return { validateField, validateForm };
+  if (diffHours >= 24) {
+    const diffDays = Math.ceil(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} × ₹${sellOrRentPrice}/day`;
+  } else {
+    const hourlyRate = (sellOrRentPrice / 24).toFixed(2);
+    const hours = Math.ceil(diffHours);
+    return `${hours} hour${hours > 1 ? "s" : ""} × ₹${hourlyRate}/hour`;
+  }
 };
 
-// Main component
+const validateForm = (formData) => {
+  const errors = {};
+
+  const requiredFields = [
+    "inventoryId",
+    "orderType",
+    "quantity",
+    "customerName",
+    "customerLocation",
+    "paymentStatus",
+    "customerPhone",
+    ...(formData?.orderType === ORDER_TYPES.RENT ? ["dueDateTime"] : []),
+  ];
+
+  requiredFields.forEach((field) => {
+    if (!formData[field] || (typeof formData[field] === "string" && !formData[field].trim())) {
+      errors[field] = `${field
+        .replace(/([A-Z])/g, " $1")
+        .toLowerCase()
+        .replace(/^\w/, (c) => c.toUpperCase())} is required`;
+    }
+  });
+
+  if (formData.customerPhone && !/^\d{10,15}$/.test(formData.customerPhone.replace(/\D/g, ""))) {
+    errors.customerPhone = "Please enter a valid phone number (10-15 digits)";
+  }
+
+  if (
+    formData.quantity &&
+    formData.remainingQuantity !== null &&
+    parseInt(formData.quantity) > formData.remainingQuantity
+  ) {
+    errors.quantity = "Quantity cannot exceed available quantity";
+  }
+  if (formData.quantity && parseInt(formData.quantity) <= 0) {
+    errors.quantity = "Quantity must be greater than 0";
+  }
+
+  if (formData.customerName && formData.customerName.trim().length < 2) {
+    errors.customerName = "Name must be at least 2 characters";
+  }
+
+  if (formData.customerLocation && formData.customerLocation.trim().length < 3) {
+    errors.customerLocation = "Location must be at least 3 characters";
+  }
+
+  if (formData?.orderType === ORDER_TYPES.RENT && !formData.dueDateTime) {
+    errors.dueDateTime = "Due date & time is required";
+  }
+
+  if (formData?.orderType === ORDER_TYPES.RENT && formData.dueDateTime) {
+    const now = new Date();
+    const due = new Date(formData.dueDateTime);
+    if (due.getTime() <= now.getTime()) {
+      errors.dueDateTime = "Due date & time must be in the future";
+    }
+  }
+
+  return errors;
+};
+
+const initialState = {
+  inventoryId: "",
+  inventoryName: "",
+  sellOrRentPrice: "",
+  price: "",
+  orderType: "",
+  quantity: "",
+  customerName: "",
+  customerLocation: "",
+  paymentStatus: "",
+  orderStatus: ORDER_STATUS.PENDING,
+  customerPhone: "",
+  unit: "",
+  remainingQuantity: null,
+  dueDateTime: null,
+};
+
 const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
   const { showAlert } = useAppContext();
-  const [state, dispatch] = useReducer(orderFormReducer, initialState);
   const [inventoryList, setInventoryList] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
-  const { validateField, validateForm } = useFormValidation();
+  const [formLoading, setFormLoading] = useState(false);
+  const [quantityLoading, setQuantityLoading] = useState(false);
+  const [orderStatusDisabled, setOrderStatusDisabled] = useState(true);
+  const [errors, setErrors] = useState({});
+
+  const [formData, setFormData] = useState(initialState);
 
   const isEdit = Boolean(orderData?.id);
 
-  const orderType = state.formData?.orderType;
-
-  // Memoized options for select fields
-  const selectOptions = useMemo(() => {
+  const getFormFields = () => {
     const validTypes = new Set([ORDER_TYPES.SELL, ORDER_TYPES.RENT]);
     const filteredInventory = inventoryList.filter((item) =>
-      validTypes.has(orderType) ? item.inventoryType === orderType : false
+      validTypes.has(formData.orderType) ? item.inventoryType === formData.orderType : false
     );
 
-    return {
-      inventoryId: filteredInventory.map((item) => ({
-        value: item.id,
-        label: item.inventoryName,
-      })),
-      paymentStatus: Object.entries(PAYMENT_STATUS).map(([key, value]) => ({
-        value,
-        label: getFormatStatus(value),
-      })),
-      orderStatus: Object.entries(ORDER_STATUS).map(([key, value]) => ({
-        value,
-        label: getFormatStatus(value),
-      })),
-    };
-  }, [inventoryList, orderType]);
+    return [
+      // Product Details
+      {
+        section: "Product Details",
+        fields: [
+          {
+            name: "orderType",
+            label: "Order Type",
+            type: "radio",
+            required: true,
+            disabled: isEdit,
+            options: Object.entries(ORDER_TYPES).map(([key, value]) => ({
+              value,
+              label: key.charAt(0) + key.slice(1).toLowerCase(),
+            })),
+            fullWidth: true,
+          },
+          {
+            name: "inventoryId",
+            label: "Item",
+            type: "select",
+            required: true,
+            disabled: isEdit,
+            options: filteredInventory.map((item) => ({
+              value: item.id,
+              label: item.inventoryName,
+            })),
+          },
+          {
+            name: "quantity",
+            label: "Quantity",
+            type: "number",
+            required: true,
+            disabled: isEdit,
+            endAdornment: formData.unit ? <InputAdornment position="end">{formData.unit}</InputAdornment> : undefined,
+            helperText:
+              formData?.inventoryId && formData.remainingQuantity !== null
+                ? `Available: ${formData?.remainingQuantity} ${formData.unit || "units"}`
+                : undefined,
+          },
+          {
+            name: "dueDateTime",
+            label: "Due Date & Time",
+            type: "date",
+            value: formData?.dueDateTime || null,
+            required: formData.orderType === ORDER_TYPES.RENT,
+            show: formData.orderType === ORDER_TYPES.RENT,
+          },
+          {
+            name: "price",
+            label: "Total Price",
+            type: "text",
+            required: false,
+            disabled: true,
+            value: formData?.price ? `₹${formData.price * (formData?.quantity || 1)}` : "",
+            helperText:
+              formData.orderType === ORDER_TYPES.RENT && formData.sellOrRentPrice && formData.dueDateTime
+                ? getPriceBreakdown(formData.sellOrRentPrice, formData.dueDateTime, formData.orderType)
+                : formData.orderType === ORDER_TYPES.SELL && formData.sellOrRentPrice
+                ? `Price per ${formData.unit || "unit"}: ₹${formData.sellOrRentPrice}`
+                : undefined,
+          },
+          {
+            name: "paymentStatus",
+            label: "Payment Status",
+            type: "select",
+            required: true,
+            options: Object.entries(PAYMENT_STATUS).map(([key, value]) => ({
+              value,
+              label: getFormatStatus(value),
+            })),
+          },
+        ],
+      },
+      // Customer Details
+      {
+        section: "Customer Details",
+        fields: [
+          {
+            name: "customerName",
+            label: "Customer Name",
+            type: "text",
+            required: true,
+          },
+          {
+            name: "customerPhone",
+            label: "Phone Number",
+            type: "tel",
+            required: true,
+          },
+          {
+            name: "customerLocation",
+            label: "Location",
+            type: "text",
+            required: true,
+          },
+          {
+            name: "orderStatus",
+            label: "Order Status",
+            type: "select",
+            required: false,
+            disabled: orderStatusDisabled,
+            options: Object.entries(ORDER_STATUS).map(([key, value]) => ({
+              value,
+              label: getFormatStatus(value),
+            })),
+          },
+        ],
+      },
+    ];
+  };
 
-  const radioOptions = useMemo(
-    () => ({
-      orderType: Object.entries(ORDER_TYPES).map(([key, value]) => ({
-        value,
-        label: key.charAt(0) + key.slice(1).toLowerCase(),
-      })),
-    }),
-    []
-  );
-
-  // Fetch inventory data
   const fetchInventory = useCallback(async () => {
     setInventoryLoading(true);
     try {
@@ -262,12 +305,10 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
     } finally {
       setInventoryLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showAlert]);
 
-  // Fetch remaining quantity for selected inventory
-  const fetchRemainingQuantity = useCallback(async (inventoryId, invQuantity) => {
-    dispatch({ type: "SET_LOADING", payload: { quantity: true } });
+  const fetchRemainingQuantity = async (inventoryId, invQuantity) => {
+    setQuantityLoading(true);
     try {
       const result = await fetchUsedQtyForInventory(inventoryId, invQuantity);
       return result?.availableQuantity || 0;
@@ -275,20 +316,20 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
       console.error("Error fetching remaining quantity:", error);
       return 0;
     } finally {
-      dispatch({ type: "SET_LOADING", payload: { quantity: false } });
+      setQuantityLoading(false);
     }
-  }, []);
+  };
 
-  // Initialize form
   useEffect(() => {
     if (isOpen) {
       fetchInventory();
       if (isEdit && orderData) {
-        const formData = {
+        setFormData({
           orderType: orderData.orderType || "",
           id: orderData.id,
           inventoryId: orderData.inventoryId || "",
           inventoryName: orderData.inventoryName || "",
+          sellOrRentPrice: orderData.sellOrRentPrice || "",
           price: orderData.price || "",
           quantity: orderData.quantity || "",
           customerName: orderData.customerName || "",
@@ -299,124 +340,125 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
           unit: orderData.unit || "",
           remainingQuantity: orderData.remainingQuantity || null,
           dueDateTime: new Date(orderData?.dueDateTime || null),
-        };
-
-        dispatch({
-          type: "SET_EDIT_DATA",
-          payload: {
-            formData,
-            orderStatusDisabled: orderData?.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING,
-          },
         });
+        setOrderStatusDisabled(orderData?.paymentstatus?.toUpperCase() === PAYMENT_STATUS.PENDING);
       } else {
-        dispatch({ type: "RESET_FORM" });
+        setFormData({ ...initialState });
+        setOrderStatusDisabled(true);
       }
+      setErrors({});
     }
   }, [isOpen, isEdit, orderData, fetchInventory]);
 
   const handleDateChange = (date) => {
-    dispatch({ type: "SET_FORM_DATA", payload: { dueDateTime: date ?? null } });
+    setFormData((prev) => {
+      let calculatedPrice = prev.price;
+
+      if (prev.orderType === ORDER_TYPES.RENT && prev.sellOrRentPrice && date) {
+        calculatedPrice = calculateRentalPrice(prev.sellOrRentPrice, date);
+      }
+
+      return {
+        ...prev,
+        dueDateTime: date ?? null,
+        price: calculatedPrice,
+      };
+    });
   };
 
-  // Handle input changes
-  const handleInputChange = useCallback(
-    async (event) => {
-      const { name, value: fieldValue } = event.target;
+  const handleInputChange = async (event) => {
+    const { name, value } = event.target;
 
-      // Clear field-specific errors
-      dispatch({ type: "CLEAR_ERROR", payload: name });
+    setErrors((prev) => {
+      const { [name]: removed, ...rest } = prev;
+      return rest;
+    });
 
-      if (name === "orderType") {
-        dispatch({
-          type: "SET_FORM_DATA",
-          payload: {
-            orderType: fieldValue,
-            inventoryId: null,
-            inventoryName: "",
-            price: null,
-            unit: "",
-            remainingQuantity: 0,
-          },
-        });
-      } else if (name === "inventoryId") {
-        const selectedItem = inventoryList.find((item) => item.id === fieldValue);
-        if (selectedItem) {
-          const remainingQuantity = await fetchRemainingQuantity(fieldValue);
-          dispatch({
-            type: "SET_FORM_DATA",
-            payload: {
-              inventoryId: fieldValue,
-              inventoryName: selectedItem.inventoryName,
-              price: selectedItem.price,
-              unit: selectedItem.unit,
-              remainingQuantity,
-            },
-          });
-        }
-      } else if (name === "paymentStatus") {
-        let newOrderStatus = ORDER_STATUS.INPROGRESS;
-        let orderStatusDisabled = false;
+    if (name === "orderType") {
+      setFormData((prev) => ({
+        ...prev,
+        orderType: value,
+        inventoryId: "",
+        inventoryName: "",
+        sellOrRentPrice: "",
+        price: "",
+        unit: "",
+        remainingQuantity: 0,
+        dueDateTime: null,
+      }));
+    } else if (name === "inventoryId") {
+      const selectedItem = inventoryList.find((item) => item.id === value);
+      if (selectedItem) {
+        const remainingQuantity = await fetchRemainingQuantity(value);
 
-        if (fieldValue === PAYMENT_STATUS.COMPLETED) {
-          newOrderStatus = ORDER_STATUS.COMPLETED;
-        } else if (fieldValue === PAYMENT_STATUS.PENDING) {
-          newOrderStatus = ORDER_STATUS.PENDING;
-          orderStatusDisabled = true;
+        // Calculate price based on order type
+        let calculatedPrice = selectedItem.sellOrRentPrice;
+        if (formData.orderType === ORDER_TYPES.RENT && formData.dueDateTime) {
+          calculatedPrice = calculateRentalPrice(selectedItem.sellOrRentPrice, formData.dueDateTime);
         }
 
-        dispatch({ type: "SET_ORDER_STATUS_DISABLED", payload: orderStatusDisabled });
-        dispatch({
-          type: "SET_FORM_DATA",
-          payload: { [name]: fieldValue, orderStatus: newOrderStatus },
-        });
-      } else {
-        dispatch({ type: "SET_FORM_DATA", payload: { [name]: fieldValue } });
+        setFormData((prev) => ({
+          ...prev,
+          inventoryId: value,
+          inventoryName: selectedItem.inventoryName,
+          sellOrRentPrice: selectedItem.sellOrRentPrice,
+          price: calculatedPrice,
+          unit: selectedItem.unit,
+          remainingQuantity,
+        }));
+      }
+    } else if (name === "paymentStatus") {
+      let newOrderStatus = ORDER_STATUS.INPROGRESS;
+      let newOrderStatusDisabled = false;
+
+      if (value === PAYMENT_STATUS.COMPLETED) {
+        newOrderStatus = ORDER_STATUS.COMPLETED;
+      } else if (value === PAYMENT_STATUS.PENDING) {
+        newOrderStatus = ORDER_STATUS.PENDING;
+        newOrderStatusDisabled = true;
       }
 
-      // Real-time validation
-      const fieldErrors = validateField(name, fieldValue, state.formData);
-      if (Object.keys(fieldErrors).length > 0) {
-        dispatch({ type: "SET_ERRORS", payload: fieldErrors });
-      }
-    },
-    [inventoryList, fetchRemainingQuantity, validateField, state.formData]
-  );
+      setOrderStatusDisabled(newOrderStatusDisabled);
+      setFormData((prev) => ({ ...prev, [name]: value, orderStatus: newOrderStatus }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
 
-  const handleClose = useCallback(() => {
-    dispatch({ type: "RESET_FORM" });
+  const handleClose = () => {
+    setFormData({ ...initialState });
+    setErrors({});
     onClose();
-  }, [onClose]);
+  };
 
-  // Handle form submission
-  const handleSave = useCallback(async () => {
-    const { isValid, errors } = validateForm(state.formData);
+  const handleSave = async () => {
+    const validationErrors = validateForm(formData);
 
-    if (!isValid) {
-      dispatch({ type: "SET_ERRORS", payload: errors });
-      // showAlert({ message: "Please fix the errors in the form", type: "error" });
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
-    dispatch({ type: "SET_LOADING", payload: { form: true } });
+    setFormLoading(true);
 
     const payload = {
-      orderType: state.formData.orderType,
-      inventoryId: state.formData.inventoryId,
-      inventoryName: state.formData.inventoryName,
-      unit: state.formData.unit || "unit",
-      price: state.formData.price,
-      quantity: parseInt(state.formData.quantity),
-      customerName: state.formData.customerName.trim(),
-      customerLocation: state.formData.customerLocation.trim(),
-      paymentStatus: state.formData.paymentStatus,
-      orderStatus: state.formData.orderStatus,
-      customerPhone: state.formData.customerPhone.replace(/\D/g, ""),
-      dueDateTime: state?.formData?.dueDateTime?.toISOString() || null,
+      orderType: formData.orderType,
+      inventoryId: formData.inventoryId,
+      inventoryName: formData.inventoryName,
+      unit: formData.unit || "unit",
+      price: formData.price,
+      quantity: parseInt(formData.quantity),
+      customerName: formData.customerName.trim(),
+      customerLocation: formData.customerLocation.trim(),
+      paymentStatus: formData.paymentStatus,
+      orderStatus: formData.orderStatus,
+      customerPhone: formData.customerPhone.replace(/\D/g, ""),
+      dueDateTime: formData?.dueDateTime?.toISOString() || null,
     };
 
     try {
-      if (state.formData.id) {
-        const res = await updateOrder(state.formData.id, payload);
+      if (formData.id) {
+        const res = await updateOrder(formData.id, payload);
         showAlert({ message: res.message, type: "success" });
       } else {
         const res = await addOrder(payload);
@@ -431,76 +473,72 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
         type: "error",
       });
     } finally {
-      dispatch({ type: "SET_LOADING", payload: { form: false } });
+      setFormLoading(false);
     }
-  }, [state.formData, validateForm, showAlert, fetchAllOrders, handleClose]);
+  };
 
-  const renderField = useCallback(
-    (field) => {
-      const { name, label, type, required, disabled } = field;
-      const isDisabled = disabled === "edit" ? isEdit : false;
-      const value = state.formData[name] || "";
-      const error = state.errors[name];
-      const commonProps = {
-        name,
-        label,
-        value,
-        onChange: handleInputChange,
-        disabled: isDisabled,
-        required,
-        error,
-      };
+  const renderField = (field) => {
+    const { name, label, type, required, disabled, show = true } = field;
+    const isDisabled = disabled;
+    const value = field.value !== undefined ? field.value : formData[name] || "";
+    const error = errors[name];
 
-      switch (type) {
-        case "select":
-          return (
-            <SelectField
-              {...commonProps}
-              options={selectOptions[name] || []}
-              disabled={isDisabled || (name === "orderStatus" && state.orderStatusDisabled)}
-            />
-          );
-        case "radio":
-          return <RadioField {...commonProps} options={radioOptions[name] || []} />;
-        case "number":
-          return (
+    if (!show) return null;
+
+    const commonProps = {
+      name,
+      label,
+      value,
+      onChange: handleInputChange,
+      disabled: isDisabled,
+      required,
+      error,
+    };
+
+    switch (type) {
+      case "select":
+        return (
+          <FormControl fullWidth disabled={isDisabled}>
+            <SelectField {...commonProps} options={field.options || []} />
+          </FormControl>
+        );
+      case "radio":
+        return (
+          <FormControl fullWidth>
+            <RadioField {...commonProps} options={field.options || []} />
+          </FormControl>
+        );
+      case "number":
+        return (
+          <FormControl fullWidth>
             <TextFieldComponent
               {...commonProps}
               type="number"
-              endAdornment={
-                name === "quantity" && state.formData.unit ? (
-                  <InputAdornment position="end">{state.formData.unit}</InputAdornment>
-                ) : undefined
-              }
-              helperText={
-                name === "quantity" && state.formData?.inventoryId && state.formData.remainingQuantity !== null
-                  ? `Available: ${state.formData?.remainingQuantity} ${state.formData.unit || "units"}`
-                  : undefined
-              }
+              endAdornment={field.endAdornment}
+              helperText={field.helperText}
             />
-          );
-        case "date":
-          return (
-            orderType === ORDER_TYPES.RENT && (
-              <DateTimePicker
-                {...commonProps}
-                selected={state.formData.dueDateTime}
-                placeholder="Choose date & time"
-                label="Due Date & Time"
-                minDate={new Date()}
-                onChange={handleDateChange}
-                textFieldProps={{
-                  helperText: error,
-                }}
-              />
-            )
-          );
-        default:
-          return <TextFieldComponent {...commonProps} type={type} />;
-      }
-    },
-    [state, isEdit, handleInputChange, selectOptions, radioOptions, orderType]
-  );
+          </FormControl>
+        );
+      case "date":
+        return (
+          <DateTimePicker
+            {...commonProps}
+            selected={value}
+            placeholder="Choose date & time"
+            label="Due Date & Time"
+            minDate={new Date()}
+            onChange={handleDateChange}
+            helperText={error}
+          />
+        );
+      default:
+        return (
+          <FormControl fullWidth>
+            <TextFieldComponent {...commonProps} type={type} />
+          </FormControl>
+        );
+    }
+  };
 
   if (inventoryLoading) {
     return (
@@ -512,67 +550,69 @@ const OrderFormModal = ({ isOpen, onClose, fetchAllOrders, orderData }) => {
     );
   }
 
+  const formSections = getFormFields();
+
   return (
-    <Dialog open={isOpen} maxWidth="md" fullWidth>
+    <Dialog open={isOpen} maxWidth="lg" fullWidth>
       <DialogTitle>{isEdit ? "Update Order" : "Create Order"}</DialogTitle>
       <DialogContent dividers>
         <Box sx={{ p: 1 }}>
-          {/* Product Details Section */}
-          <DialogTitle sx={{ pl: 0, pb: 2 }}>Product Details</DialogTitle>
-          <Grid>
-            {/* First show only the orderType field */}
-            {FORM_FIELDS.PRODUCT.filter((field) => field.name === "orderType").map((field) => (
-              <Grid item xs={12} key={field.name}>
-                {renderField(field)}
-              </Grid>
-            ))}
-            <Grid container spacing={2} marginTop={2}>
-              {/* Then show the rest of the product fields */}
-              {FORM_FIELDS.PRODUCT.filter((field) => field.name !== "orderType").map((field) => (
-                <Grid item xs={6} key={field.name}>
-                  {renderField(field)}
-                </Grid>
-              ))}
-            </Grid>
-          </Grid>
-          {/* Customer Details Section */}
-          <DialogTitle sx={{ pl: 0, pb: 2 }}>Customer Details</DialogTitle>
-          <Grid container spacing={2}>
-            {FORM_FIELDS.CUSTOMER.map((field) => (
-              <Grid item xs={12} sm={6} key={field.name}>
-                {renderField(field)}
-              </Grid>
-            ))}
-          </Grid>
+          {formSections.map((section) => (
+            <Box key={section.section} sx={{ mb: 3 }}>
+              <DialogTitle sx={{ pl: 0, pb: 2 }}>{section.section}</DialogTitle>
 
-          {/* Display loading state for quantity fetch */}
-          {state.loading.quantity && (
+              {section.section === "Product Details" ? (
+                <Box>
+                  {section.fields
+                    .filter((field) => field.name === "orderType")
+                    .map((field) => (
+                      <Box sx={{ mb: 2 }} key={field.name}>
+                        {renderField(field)}
+                      </Box>
+                    ))}
+
+                  <Grid container spacing={2}>
+                    {section.fields
+                      .filter((field) => field.name !== "orderType")
+                      .map((field) => (
+                        <Grid item xs={6} key={field.name}>
+                          {renderField(field)}
+                        </Grid>
+                      ))}
+                  </Grid>
+                </Box>
+              ) : (
+                <Grid container spacing={2}>
+                  {section.fields.map((field) => (
+                    <Grid item xs={6} key={field.name}>
+                      {renderField(field)}
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Box>
+          ))}
+
+          {quantityLoading && (
             <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
               <CircularProgress size={16} sx={{ mr: 1 }} />
               <Box sx={{ fontSize: "0.875rem", color: "text.secondary" }}>Fetching available quantity...</Box>
             </Box>
           )}
-
-          {/* Display errors */}
-          {Object.keys(state.errors).length > 0 && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Please fix the errors above before submitting
-            </Alert>
-          )}
         </Box>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={handleClose} disabled={state.loading.form}>
+        <Button onClick={handleClose} disabled={formLoading}>
           Cancel
         </Button>
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={state.loading.form}
-          startIcon={state.loading.form ? <CircularProgress size={16} /> : null}
+          disabled={formLoading}
+          startIcon={formLoading ? <CircularProgress size={16} /> : null}
         >
-          {state.loading.form ? "Saving..." : "Save"}
+          {formLoading ? "Saving..." : "Save"}
         </Button>
       </DialogActions>
     </Dialog>

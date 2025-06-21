@@ -8,6 +8,7 @@ import {
   Paper,
   CircularProgress,
   IconButton,
+  Typography,
 } from "@mui/material";
 import { useCallback } from "react";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
@@ -29,9 +30,10 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
             <TableCell>Price</TableCell>
             <TableCell>Type</TableCell>
             <TableCell>Quantity</TableCell>
-            <TableCell>Total</TableCell>
+            <TableCell>Order Total</TableCell>
             <TableCell>Customer</TableCell>
             <TableCell>Order date</TableCell>
+            <TableCell>Due date</TableCell>
             <TableCell>Payment</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Action</TableCell>
@@ -55,9 +57,30 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
                 <TableCell>₹{order.price * order.quantity}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell sx={{ minWidth: 150 }}>{formatDate(order.createdAt)}</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>{formatDate(order.dueDateTime) ?? "--"}</TableCell>
                 <TableCell>{getFormatStatus(order.paymentStatus)}</TableCell>
-                <TableCell>{getFormatStatus(order.orderStatus)}</TableCell>
-
+                <TableCell>
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: 12,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      color: "#fff",
+                      background:
+                        order.orderStatus === "ORDER_CANCELLED"
+                          ? "red"
+                          : order.orderStatus === "ORDER_INPROGRESS"
+                          ? "mediumseagreen"
+                          : order.orderStatus === "ORDER_COMPLETED"
+                          ? "green"
+                          : "grey",
+                    }}
+                  >
+                    {getFormatStatus(order.orderStatus)}
+                  </Typography>
+                </TableCell>
 
                 <TableCell>
                   <IconButton variant="contained" color="success" onClick={() => handleEdit(order.id)}>
