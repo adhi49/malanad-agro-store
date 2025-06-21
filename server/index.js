@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import "./config/db.js"; // Just import to initiate connection
 import inventoryRoutes from "./routes/inventory.routes.js";
 import orderRoutes from "./routes/order.routes.js";
-// import dashboardRoutes from "./routes/dashboard.routes.js"
+import dashboardRoutes from "./routes/dashboard.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/dashboard/inventory", inventoryRoutes);
 app.use("/api/dashboard/orders", orderRoutes);
-// app.use("/api/dashboard/dashboard", dashboardRoutes)
+app.use("/api/dashboard", dashboardRoutes);
 
 // Error handling middleware (optional but recommended)
 app.use((err, req, res, next) => {
