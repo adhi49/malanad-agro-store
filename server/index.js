@@ -5,6 +5,7 @@ import "./config/db.js"; // Just import to initiate connection
 import inventoryRoutes from "./routes/inventory.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,9 @@ app.use((req, res, next) => {
 app.get("/", (req, res) => {
   res.send("🚀 Malanad Agro Store Backend is live!");
 });
+
+// Public routes (no authentication required)
+app.use("/api/auth", authRoutes);
 
 // Routes
 app.use("/api/dashboard/inventory", inventoryRoutes);

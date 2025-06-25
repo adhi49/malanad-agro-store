@@ -76,6 +76,7 @@ const OrderList = ({ ordersFetching = false, orderlist = [], handleEdit }) => {
                           : order.orderStatus === "ORDER_COMPLETED"
                           ? "green"
                           : "grey",
+                      textWrap: "nowrap",
                     }}
                   >
                     {getFormatStatus(order.orderStatus)}

@@ -9,15 +9,10 @@ import {
   fetchPendingSales,
 } from "../api/dashboard";
 import { useNavigate } from "react-router-dom";
-
-// Mock API functions for demo - replace with your actual imports
-// const fetchTotalProfit = () => new Promise((resolve) => setTimeout(() => resolve(125000), 1000));
-// const fetchAvailableInventories = () => new Promise((resolve) => setTimeout(() => resolve(450), 1200));
-// const fetchTotalSoldItems = () => new Promise((resolve) => setTimeout(() => resolve(89), 800));
-// const fetchTotalRentedItems = () => new Promise((resolve) => setTimeout(() => resolve(67), 900));
-// const fetchPendingRentItems = () => new Promise((resolve) => setTimeout(() => resolve(23), 1100));
+import { useAuth } from "../AuthContext";
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     pendingSales: 0,
     profit: 0,
@@ -28,7 +23,7 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   useEffect(() => {
     const loadStats = async () => {
       try {
@@ -39,7 +34,7 @@ const Dashboard = () => {
           fetchTotalSoldItems(),
           fetchTotalRentedItems(),
           fetchPendingRentItems(),
-          fetchPendingSales()
+          fetchPendingSales(),
         ]);
 
         setStats({ profit, available, sold, rented, pendingRents, pendingSales });
@@ -98,9 +93,9 @@ const Dashboard = () => {
       button: {
         label: "View All",
         onClick: () => {
-          navigate("/rented-items")
-        }
-      }
+          navigate("/rented-items");
+        },
+      },
     },
     {
       title: "Pending Rentals",
@@ -114,9 +109,9 @@ const Dashboard = () => {
       button: {
         label: "View All",
         onClick: () => {
-          navigate("/pending-rentals")
-        }
-      }
+          navigate("/pending-rentals");
+        },
+      },
     },
     {
       title: "Pending Sales",
@@ -130,10 +125,10 @@ const Dashboard = () => {
       button: {
         label: "View All",
         onClick: () => {
-          navigate("/pending-sales")
-        }
-      }
-    }
+          navigate("/pending-sales");
+        },
+      },
+    },
   ];
 
   if (error) {
@@ -161,6 +156,15 @@ const Dashboard = () => {
         </div>
         <p className="text-gray-600">Monitor your business performance and inventory status</p>
       </div>
+      {/* <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome to Malanad Agro Store Dashboard</h2>
+        <p className="text-gray-600 mb-2">
+          Hello, <span className="font-semibold">{user?.userName}</span>!
+        </p>
+        <p className="text-sm text-gray-500">
+          Role: <span className="capitalize font-medium">{user?.role}</span>
+        </p>
+      </div> */}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {cardData.map((card, index) => (
@@ -171,7 +175,18 @@ const Dashboard = () => {
   );
 };
 
-const StatsCard = ({ title, subtitle, value, icon: Icon, iconColor, bgColor, borderColor, accentColor, loading, button }) => {
+const StatsCard = ({
+  title,
+  subtitle,
+  value,
+  icon: Icon,
+  iconColor,
+  bgColor,
+  borderColor,
+  accentColor,
+  loading,
+  button,
+}) => {
   return (
     <div
       className={`
