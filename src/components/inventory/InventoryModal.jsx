@@ -21,6 +21,8 @@ const categoryList = [
   { label: "Pesticides", value: "Pesticides" },
   { label: "Tools", value: "Tools" },
   { label: "Machine", value: "Machine" },
+  { label: "Agriculture Chemicals", value: "Agriculture Chemicals" },
+
 ];
 
 const rentItemList = ["Tools", "Machine"];

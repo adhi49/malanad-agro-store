@@ -235,3 +235,25 @@ export const getUsedQuantity = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const getPendingRentOrders = async (req, res) => {
+  try {
+    const result = await pool.query(`
+     SELECT * FROM orders
+      WHERE "orderType" IN ('Rent', 'Sell')
+        AND "orderStatus" NOT IN ('ORDER_COMPLETED', 'ORDER_CANCELLED')
+      ORDER BY 
+        CASE 
+          WHEN "dueDateTime" IS NOT NULL AND "dueDateTime" = CURRENT_DATE THEN 1
+          WHEN "dueDateTime" IS NOT NULL AND "dueDateTime" < CURRENT_DATE THEN 2
+          ELSE 3
+        END,
+        COALESCE("dueDateTime", "createdAt") ASC;
+
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch rent orders", error: error.message });
+  }
+};

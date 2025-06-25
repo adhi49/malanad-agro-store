@@ -6,7 +6,9 @@ import {
   fetchTotalSoldItems,
   fetchTotalRentedItems,
   fetchPendingRentItems,
+  fetchPendingSales,
 } from "../api/dashboard";
+import { useNavigate } from "react-router-dom";
 
 // Mock API functions for demo - replace with your actual imports
 // const fetchTotalProfit = () => new Promise((resolve) => setTimeout(() => resolve(125000), 1000));
@@ -17,6 +19,7 @@ import {
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
+    pendingSales: 0,
     profit: 0,
     available: 0,
     sold: 0,
@@ -25,20 +28,21 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const navigate = useNavigate()
   useEffect(() => {
     const loadStats = async () => {
       try {
         setLoading(true);
-        const [profit, available, sold, rented, pendingRents] = await Promise.all([
+        const [profit, available, sold, rented, pendingRents, pendingSales] = await Promise.all([
           fetchTotalProfit(),
           fetchAvailableInventories(),
           fetchTotalSoldItems(),
           fetchTotalRentedItems(),
           fetchPendingRentItems(),
+          fetchPendingSales()
         ]);
 
-        setStats({ profit, available, sold, rented, pendingRents });
+        setStats({ profit, available, sold, rented, pendingRents, pendingSales });
         setError(null);
       } catch (error) {
         console.error("Failed to load dashboard stats", error);
@@ -91,6 +95,12 @@ const Dashboard = () => {
       bgColor: "bg-orange-50",
       borderColor: "border-orange-200",
       accentColor: "bg-orange-500",
+      button: {
+        label: "View All",
+        onClick: () => {
+          navigate("/rented-items")
+        }
+      }
     },
     {
       title: "Pending Rentals",
@@ -101,7 +111,29 @@ const Dashboard = () => {
       bgColor: "bg-amber-50",
       borderColor: "border-amber-200",
       accentColor: "bg-amber-500",
+      button: {
+        label: "View All",
+        onClick: () => {
+          navigate("/pending-rentals")
+        }
+      }
     },
+    {
+      title: "Pending Sales",
+      subtitle: "Awaiting payment",
+      value: stats.pendingSales?.toLocaleString() ?? "0",
+      icon: Clock,
+      iconColor: "text-amber-600",
+      bgColor: "bg-amber-50",
+      borderColor: "border-amber-200",
+      accentColor: "bg-amber-500",
+      button: {
+        label: "View All",
+        onClick: () => {
+          navigate("/pending-sales")
+        }
+      }
+    }
   ];
 
   if (error) {
@@ -139,7 +171,7 @@ const Dashboard = () => {
   );
 };
 
-const StatsCard = ({ title, subtitle, value, icon: Icon, iconColor, bgColor, borderColor, accentColor, loading }) => {
+const StatsCard = ({ title, subtitle, value, icon: Icon, iconColor, bgColor, borderColor, accentColor, loading, button }) => {
   return (
     <div
       className={`
@@ -182,6 +214,13 @@ const StatsCard = ({ title, subtitle, value, icon: Icon, iconColor, bgColor, bor
                 <TrendingUp size={12} className="mr-1" />
                 <span>Updated now</span>
               </div>
+              {button && (
+                <div className="pt-2">
+                  <button onClick={button.onClick} className="text-sm text-blue-600 hover:underline font-medium">
+                    {button.label}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

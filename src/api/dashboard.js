@@ -29,3 +29,9 @@ export const fetchPendingRentItems = async () => {
   const response = await axiosInstance.get(`/dashboard/pending-rents`);
   return response.data.pendingRents;
 };
+
+// 6. Total pending selled items (no time filter)
+export const fetchPendingSales = async () => {
+  const response = await axiosInstance.get(`/dashboard/total-pending-sales`);
+  return response.data.pendingSales;
+};

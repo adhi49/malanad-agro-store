@@ -40,3 +40,12 @@ export const fetchUsedQtyForInventory = async (inventoryId) => {
     console.error("Quantity fetch erro:r", error);
   }
 };
+
+export const getPendingRentOrders = async () => {
+  try {
+    const response = await axiosInstance.get('/dashboard/orders/pending-orders')
+    return response.data
+  } catch (error) {
+    console.log("pending order fetching error:", error)
+  }
+}

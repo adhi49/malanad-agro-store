@@ -60,10 +60,26 @@ export const getPendingRents = async (req, res) => {
     const result = await pool.query(`
       SELECT COUNT(*) FROM orders
       WHERE "orderType" = 'Rent'
-        AND "orderStatus" = 'Pending'
+       AND "orderStatus" NOT IN ('ORDER_COMPLETED', 'ORDER_CANCELLED')
     `);
     res.json({ pendingRents: parseInt(result.rows[0].count, 10) });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch pending rents", error: error.message });
   }
 };
+
+// 6. Total items selled (no time filter)
+export const getPendingSales = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*)FROM orders
+      WHERE "orderType"= 'Sell'
+    AND "orderStatus" NOT IN ('ORDER_COMPLETED', 'ORDER_CANCELLED')
+      `)
+    res.json({ pendingSales: parseInt(result.rows[0].count, 10) })
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch pending sales", error: error.message })
+  }
+};
+
+
