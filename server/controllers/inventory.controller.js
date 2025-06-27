@@ -55,12 +55,31 @@ export const createInventory = async (req, res) => {
 
 export const getAllInventory = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM inventory_management ORDER BY "createdAt" DESC;');
-    res.status(200).json({ success: true, data: result.rows });
+    const page = parseInt(req.query.page) || 1;
+    const size = parseInt(req.query.size) || 10;
+    const offset = (page - 1) * size;
+
+    const result = await pool.query(
+      `SELECT * FROM inventory_management ORDER BY "createdAt" ASC LIMIT $1 OFFSET $2;`,
+      [size, offset]
+    );
+
+    const countQuery = await pool.query(`SELECT COUNT(*) FROM inventory_management`);
+    const totalItems = parseInt(countQuery.rows[0].count);
+
+    res.status(200).json({
+      success: true,
+      page,
+      size,
+      totalItems,
+      totalPages: Math.ceil(totalItems / size),
+      data: result.rows
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 export const getInventoryById = async (req, res) => {
   try {

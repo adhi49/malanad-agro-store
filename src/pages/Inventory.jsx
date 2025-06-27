@@ -24,15 +24,20 @@ const Inventory = () => {
   const [dataList, setInventoryList] = useState([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [page, setPage] = useState(1);
+  const [size] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchInventoryList = async () => {
-    const result = await getInventory();
+
+  const fetchInventoryList = async (currentPage = 1) => {
+    const result = await getInventory(currentPage, size);
     setInventoryList(result?.data || []);
+    setTotalPages(result?.totalPages || 1);
   };
 
   useEffect(() => {
-    fetchInventoryList();
-  }, []);
+    fetchInventoryList(page);
+  }, [page]);
 
   const toggleModal = () => {
     setFormData(initialState);
@@ -122,6 +127,9 @@ const Inventory = () => {
         dataList={dataList}
         handleGetInventory={handleGetInventory}
         handleDeleteInventory={handleDeleteInventory}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={(e, value) => setPage(value)}
       />
       <InventoryModal
         isOpen={isModalOpen}

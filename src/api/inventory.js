@@ -5,9 +5,9 @@ export const addInventory = async (data) => {
   return response.data;
 };
 
-export const getInventory = async () => {
+export const getInventory = async (page, size) => {
   try {
-    const response = await axiosInstance.get("/dashboard/inventory");
+    const response = await axiosInstance.get(`/dashboard/inventory?page=${page}&size=${size}`);
     return response.data;
   } catch (error) {
     console.error("Fetch Error:", error);
